@@ -1,49 +1,33 @@
-# AAHVANI AI — Project Report
+# AAHVANI AI — One-Page Project Report
 
-## Project overview
+**Project:** Autonomous AI Sales Voice Agent  
+**Author:** Yogesh Yadav
 
-AAHVANI AI is an AI-powered autonomous sales voice-agent prototype designed to automate the first stages of customer engagement. It listens to or receives a customer inquiry, understands the requirement, retrieves relevant product information, qualifies the lead, offers an appointment, records the outcome in a CRM, and generates a concise call summary.
+## Problem and solution
+Sales teams spend time answering repeated product questions, collecting prospect details, qualifying leads and coordinating introductory demos. AAHVANI AI demonstrates an assistant that conducts a contextual conversation, retrieves approved product information, captures buying signals, offers a demo slot, saves the lead in a CRM and prepares a call summary.
 
-## Problem statement
+## Core workflow
+Customer message or optional microphone audio → optional speech transcription → conversational sales agent → session context and FAQ retrieval → lead qualification and sentiment signal → local appointment booking → SQLite CRM record → call summary. The interface also supports optional spoken responses.
 
-Sales teams spend significant time answering repetitive product questions, collecting customer details, identifying purchase readiness, and coordinating introductory appointments. Delayed responses and inconsistent qualification can reduce conversion opportunities. AAHVANI AI demonstrates how a conversational agent can streamline this workflow while preserving the option for human intervention.
-
-## Objectives
-
-1. Provide a conversational interface for customer inquiries.
-2. Maintain context during a customer session.
-3. Answer product questions using a retrieval-augmented knowledge base.
-4. Qualify prospects using budget, authority, need, and timeline signals.
-5. Detect basic sentiment cues and prioritize follow-up.
-6. Book a demo slot and persist the lead and appointment.
-7. Generate a structured conversation summary.
+## Objectives and implementation
+- **Conversation:** Gradio UI with session-level conversation history.
+- **Knowledge retrieval:** local Markdown FAQ ranked with a lightweight term-frequency/inverse-document-frequency-style lexical scoring baseline.
+- **Response generation:** optional Gemini API; deterministic local fallback keeps the demonstration usable without a key.
+- **Lead qualification:** transparent BANT-inspired heuristic using Budget, Authority, Need and Timeline signals.
+- **Sentiment:** simple keyword baseline for positive, neutral or negative language.
+- **Booking and CRM:** Python functions and SQLite persist leads and sample demo appointments.
+- **Voice:** optional Faster-Whisper speech-to-text and Edge TTS speech output.
 
 ## Technology stack
+Python, Gradio, Gemini API (optional), custom lexical retrieval, SQLite, Faster-Whisper (optional), Edge TTS (optional), and pytest.
 
-- **Python:** application logic and orchestration
-- **Gradio:** interactive web interface
-- **Gemini API (optional):** LLM-based response generation
-- **TF-IDF and cosine similarity:** lightweight local retrieval
-- **SQLite:** lead, appointment, and interaction persistence
-- **Faster-Whisper (optional):** local speech-to-text
-- **Edge TTS (optional):** spoken response generation
+## Evaluation
+The repository includes automated tests for lead scoring, fact extraction, conversation memory, FAQ retrieval and CRM booking/persistence. The prototype uses fictional product information and sample appointment slots. It is not connected to a live telephony system, external CRM or real calendar.
 
-## End-to-end workflow
+## Scalability, security and commercial feasibility
+For 100,000 registered users, a production design should separate stateless API services from streaming voice workers; use PostgreSQL for durable transactional data, Redis for session state, a managed vector database for semantic retrieval, queues for asynchronous work, and horizontally scaled containers behind an API gateway. Capacity planning must use peak concurrent calls and audio throughput rather than registered users alone. The production service should implement tenant isolation, TLS, encryption at rest, role-based access, secret management, explicit recording consent, audit logs, and retention/deletion controls.
 
-Customer inquiry → speech transcription (optional) → conversational sales agent → contextual history and FAQ retrieval → lead qualification and sentiment signal → appointment booking → SQLite CRM record → call summary and follow-up recommendation.
-
-## Implementation and evaluation
-
-The prototype includes a Gradio application, session-level conversation history, a local product FAQ retriever, transparent BANT-inspired scoring, basic sentiment rules, a booking action, SQLite storage, optional voice adapters, and a call-summary generator. Automated core tests cover retrieval, qualification, appointment booking, CRM persistence, and summary generation. The demonstration should use synthetic customer information.
-
-## Architecture and scalability
-
-The current MVP runs locally and uses SQLite for simplicity. A production design for up to 100,000 registered users should use stateless FastAPI services behind a load balancer, containerized workers with horizontal autoscaling, PostgreSQL for transactional data, Redis for short-lived session state and caching, a managed vector database for retrieval, a message queue for asynchronous tasks, and a dedicated streaming voice/telephony layer. Capacity should be planned around concurrent calls and audio throughput, not registered-user count alone.
-
-## Security and commercial feasibility
-
-A production system should obtain explicit recording consent, minimize collected personal data, encrypt data in transit and at rest, apply role-based access, manage secrets outside source control, define retention/deletion policies, and log tool actions. Commercially, the product could be offered as SaaS with subscription tiers and usage-based voice minutes, targeting businesses with repetitive inbound sales inquiries. Key metrics include response time, qualified-lead rate, appointment conversion, cost per qualified lead, and human handoff rate.
+A SaaS model could combine subscription tiers with usage-based voice minutes. Key business metrics include qualified-lead rate, appointment conversion, response latency, cost per qualified lead and human handoff rate.
 
 ## Limitations and next steps
-
-This MVP does not include production telephony, live calendar integration, enterprise CRM connectors, robust multilingual evaluation, or production-grade concurrent scaling. Next steps are to integrate a telephony provider, add real calendar/CRM connectors, improve language and sentiment evaluation, implement authentication and observability, and load-test the deployment architecture.
+This is an evaluation MVP; it has not been load-tested for 100,000 users. The qualification and sentiment methods are heuristic baselines. Next steps include live telephony, real calendar and CRM integrations, multilingual evaluation, authentication, monitoring, privacy controls and load testing.
