@@ -1,26 +1,23 @@
-# Product Knowledge Base
+# Northstar CRM — Product Knowledge Base
 
 ## Product overview
-DemoCRM is a fictional customer relationship management platform used for this prototype demonstration.
+Northstar CRM is a fictional demo product used to demonstrate AAHVANI AI. It helps small and medium businesses organize inbound leads, track sales conversations, manage follow-ups and monitor their sales pipeline.
 
 ## Core features
-- Lead capture and contact management
-- Sales pipeline tracking
-- Follow-up reminders
-- Team activity overview
-- Basic sales performance reports
+- Lead management: capture contact details, source, requirements and qualification status.
+- Sales pipeline: organize leads by stages such as New, Contacted, Qualified, Demo Scheduled and Won.
+- Follow-up reminders: help sales teams remember the next action for each lead.
+- Reporting: view lead volume, qualification status, response time and conversion trends.
+- Integrations: an implementation can connect to a company's existing CRM through authenticated APIs. The demo does not connect to a real external CRM.
 
-## Target customers
-Small and medium-sized businesses, including digital agencies and service providers.
+## Ideal customers
+Small and medium businesses, service providers, education consultancies, real-estate teams and agencies that receive regular customer inquiries.
 
-## Demo and onboarding
-Customers can book a product demonstration with the sales team. A demo booking is not a paid subscription and does not guarantee product availability.
+## Pricing
+The demo knowledge base does not contain approved commercial pricing. AAHVANI AI must not invent prices. It should offer a human sales follow-up for a formal quotation.
 
-## Pricing guidance
-The prototype uses sample pricing only. The sales agent must not present sample figures as a binding quote. Final pricing depends on the customer's requirements and the commercial agreement.
+## Security and privacy
+A production deployment should use TLS in transit, encryption at rest, role-based access control, audit logging, retention controls and explicit consent for call recording. The prototype stores its local demo records in SQLite and should use synthetic customer data only.
 
-## Support
-The fictional support team can help with onboarding, account setup, and product usage questions.
-
-## Data handling
-A production CRM should collect only necessary business contact information, use access controls, encrypt data, and follow a documented retention and deletion policy.
+## Demo booking
+The prototype can reserve one of the sample demo slots displayed in the interface. These are local demonstration slots, not real calendar availability.
