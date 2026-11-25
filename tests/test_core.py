@@ -45,6 +45,27 @@ class AgentCoreTests(unittest.TestCase):
         self.assertTrue(results)
         self.assertIn("Lead management", results[0]["content"])
 
+    def test_end_to_end_lead_to_booking_workflow(self):
+        with tempfile.TemporaryDirectory() as directory:
+            crm = CRM(Path(directory) / "workflow.db")
+            _, session = self.agent.respond("Hello", self.session)
+            _, session = self.agent.respond(
+                "I am Rahul, founder. We need a CRM to track incoming leads. "
+                "Our budget is ₹50,000 and we will implement this month. "
+                "Email rahul@example.com",
+                session,
+            )
+            lead = session["lead"]
+            self.assertEqual(lead["email"], "rahul@example.com")
+            self.assertEqual(lead["qualification"], "Qualified")
+            lead_id = crm.save_lead(lead)
+            appointment_id = crm.book_appointment(lead_id, "Demo slot 1 — 11:00 AM")
+            summary = self.agent.summarize(session)
+            self.assertTrue(appointment_id)
+            self.assertIn("Rahul", summary)
+            self.assertIn("Qualified", summary)
+            self.assertEqual(crm.appointment_count(), 1)
+
 
 class CRMTests(unittest.TestCase):
     def test_save_and_book(self):
