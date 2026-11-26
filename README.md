@@ -47,7 +47,7 @@ AAHVANI AI is a voice-and-text shopping assistant built around one shared conver
 6. Customer says "yes". The order is created in SQLite and the chat shows a success receipt with an AAH-XXXXXXXX reference and Pending status.
 7. The customer can ask for the order status using the reference. The dashboard also provides a demo status control to move an order through Processing, Shipped and Delivered.
 
-Smartphone, headphone, tablet, watch, monitor, camera, appliance, speaker and gaming-console conversations use the same reusable flow with category-specific follow-up questions.
+Smartphone, laptop, headphone, tablet, watch, monitor, camera, appliance, speaker, gaming-console, television, printer, footwear, backpack and furniture conversations use the same reusable flow with category-specific follow-up questions.
 
 ## Important demo boundaries
 
@@ -63,7 +63,7 @@ Smartphone, headphone, tablet, watch, monitor, camera, appliance, speaker and ga
 - **Python:** product matching, conversation fallback, order validation and workflow.
 - **Gradio:** dashboard, conversation transcript, integrated voice/text composer and order panels.
 - **SQLite:** persistent simulated order history and status updates.
-- **JSON catalogue:** editable demo product listings across ten categories.
+- **JSON catalogue:** editable demo product listings across fifteen categories.
 - **Gemini Live API:** optional real-time speech-to-speech conversation and function calling.
 - **FastRTC/WebRTC:** browser microphone, speaker and integrated textbox transport.
 - **NumPy:** microphone audio conversion/resampling support.
