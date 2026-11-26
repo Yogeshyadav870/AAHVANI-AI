@@ -12,6 +12,16 @@ load_dotenv()
 from agent import AahvaniAgent
 from crm import CRM
 
+try:
+    from fastrtc import WebRTC
+    from live_voice import AahvaniLiveHandler
+    LIVE_VOICE_AVAILABLE = True
+except ImportError as live_import_error:
+    WebRTC = None
+    AahvaniLiveHandler = None
+    LIVE_VOICE_AVAILABLE = False
+    LIVE_VOICE_IMPORT_ERROR = str(live_import_error)
+
 APP_NAME = "AAHVANI AI"
 _WHISPER_MODEL = None
 agent = AahvaniAgent()
@@ -424,6 +434,29 @@ label, .label-wrap span { color: #6e6052 !important; font-weight: 700 !important
     font-size: 12px;
     line-height: 1.5;
 }
+#live-voice-panel {
+    margin: 0 0 22px !important;
+    background: linear-gradient(145deg, #fffefa 0%, #fffdf9 100%) !important;
+}
+#live-voice-panel .live-mode-note {
+    margin: -4px 0 14px 49px;
+    padding: 10px 13px;
+    border-left: 3px solid #b58a42;
+    border-radius: 0 10px 10px 0;
+    background: #f6eee4;
+    color: #786a5a;
+    font-size: 12px;
+    line-height: 1.5;
+}
+#aahvani-live-webrtc {
+    border: 1px solid #e8d9c9 !important;
+    border-radius: 17px !important;
+    background: linear-gradient(150deg, #f5ede4 0%, #f8f2eb 100%) !important;
+    padding: 12px !important;
+}
+#aahvani-live-webrtc button {
+    border-radius: 999px !important;
+}
 #speech-output { border-radius: 14px !important; }
 #crm-table { border-radius: 14px; overflow: hidden; background: #fffdf9 !important; color: #211a14 !important; }
 footer { opacity: .48 !important; }
@@ -496,6 +529,61 @@ with gr.Blocks(title=APP_NAME) as demo:
             qualified_count = gr.Number(label="QUALIFIED LEADS", value=qualified_leads_now, interactive=False)
         with gr.Column(elem_classes=["kpi-card"]):
             appointment_count = gr.Number(label="DEMO BOOKINGS", value=bookings_now, interactive=False)
+
+    with gr.Group(elem_classes=["surface-card"], elem_id="live-voice-panel"):
+        gr.HTML("""
+        <div class="section-head">
+            <div class="section-symbol">🎙</div>
+            <div>
+                <h2>Speak Up — Live Voice Mode</h2>
+                <p>Talk naturally with AAHVANI. It listens continuously, responds with voice, and can be interrupted.</p>
+            </div>
+        </div>
+        <div class="live-mode-note">
+            Live mode streams microphone audio to Gemini. Customer speech is transcribed for lead capture and CRM updates.
+            Use headphones for the clearest conversation.
+        </div>
+        """)
+        if LIVE_VOICE_AVAILABLE:
+            live_audio = WebRTC(
+                label="Speak Up",
+                mode="send-receive",
+                modality="audio",
+                variant="textbox",
+                elem_id="aahvani-live-webrtc",
+            )
+            live_status = gr.Markdown(
+                "Ready. Press the microphone control to start a live conversation.",
+                elem_classes=["status-note"],
+            )
+            live_handler = AahvaniLiveHandler()
+            live_audio.stream(
+                live_handler,
+                inputs=[live_audio],
+                outputs=[live_audio],
+                time_limit=900,
+                concurrency_limit=1,
+                show_progress="hidden",
+            )
+            live_audio.on_additional_outputs(
+                lambda *values: values,
+                outputs=[
+                    live_status, chatbot, session_state, last_response_state,
+                    lead_name, lead_company, lead_email, lead_phone,
+                    lead_score, lead_status, sentiment, crm_table,
+                    lead_count, qualified_count, appointment_count,
+                ],
+                queue=False,
+                show_progress="hidden",
+            )
+        else:
+            gr.Markdown(
+                "Live Voice Mode is not installed yet. In the project terminal, run "
+                "`pip install -r requirements-live.txt`, then restart AAHVANI AI. "
+                "You will also need a Gemini API key in your local `.env` file. "
+                f"\n\nOptional dependency detail: {LIVE_VOICE_IMPORT_ERROR}",
+                elem_classes=["status-note"],
+            )
 
     with gr.Row(elem_classes=["workspace-grid"]):
         with gr.Column(scale=7, elem_classes=["surface-card", "conversation-panel"]):
