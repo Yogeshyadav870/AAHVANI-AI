@@ -33,11 +33,11 @@ class ShoppingCatalogue:
         "Microsoft", "Logitech",
     )
     USE_CASES = {
-        "gaming": ("gaming", "game", "games", "gamer", "gpu", "fps"),
+        "gaming": ("gaming", "game", "games", "gamer", "gpu", "fps", "khel"),
         "coding": ("coding", "programming", "developer", "development", "software"),
-        "study": ("study", "student", "college", "classes", "online class", "notes"),
-        "work": ("work", "office", "professional", "productivity", "business"),
-        "camera": ("camera", "photography", "photos", "selfie", "video recording"),
+        "study": ("study", "student", "college", "classes", "online class", "notes", "padhai"),
+        "work": ("work", "office", "professional", "productivity", "business", "kaam"),
+        "camera": ("camera", "photography", "photos", "photo", "selfie", "video recording"),
         "battery": ("battery", "long battery", "backup", "battery life"),
         "performance": ("performance", "fast", "multitasking", "processor", "speed"),
         "music": ("music", "songs", "audio", "bass"),
@@ -185,7 +185,11 @@ class ShoppingAgent:
         r"^(?:yes|yeah|yep|sure|confirm|confirmed|go ahead|place it|buy it|order it|please do|yes please|do it)[.! ]*$",
         re.I,
     )
-    NO = re.compile(r"^(?:no|nope|cancel|not now|don't place it|do not place it)[.! ]*$", re.I)
+    YES = re.compile(
+        r"^(?:yes|yeah|yep|sure|confirm|confirmed|go ahead|place it|buy it|order it|please do|yes please|do it|haan|han|ji haan|jee haan|haan ji|kar do|order kar do|haan kar do)[.! ]*$",
+        re.I,
+    )
+    NO = re.compile(r"^(?:no|nope|cancel|not now|don't place it|do not place it|nahi|nahin|abhi nahi)[.! ]*$", re.I)
     CATEGORY_SWITCH = re.compile(
         r"\b(?:actually|instead|change to|switch to|i want (?:a|an|the)|i need (?:a|an|the)|looking for (?:a|an|the)|buy (?:a|an|the))\b",
         re.I,
