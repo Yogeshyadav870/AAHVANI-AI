@@ -93,6 +93,8 @@ class AgentCoreTests(unittest.TestCase):
     def test_numeric_budget_and_flexible_status_are_both_captured(self):
         budget = self.agent._extract_budget("55000 and it's flexible")
         self.assertEqual(budget, "55,000 (flexible)")
+        comma_formatted_budget = self.agent._extract_budget("My budget is 55,000 and it's flexible")
+        self.assertEqual(comma_formatted_budget, "55,000 (flexible)")
 
     def test_ceo_and_approve_it_are_recognised_as_decision_makers(self):
         self.assertEqual(
