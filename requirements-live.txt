@@ -1,7 +1,7 @@
 # Optional: install this to enable real-time bidirectional voice mode.
 # Pinned versions for the current Gemini Live + FastRTC integration.
 -r requirements.txt
-# Interactions API requires google-genai >=2.3.0; pin current verified release.
-# Interactions API support starts at 2.3.0; 2.8.0 remains compatible with Gradio 5.49.1's Pydantic range.
+# Interactions API requires google-genai >=2.3.0. Version 2.8.0 supports it
+# while remaining compatible with Gradio 5.49.1's Pydantic <2.12 requirement.
 google-genai==2.8.0
 fastrtc==0.0.34
