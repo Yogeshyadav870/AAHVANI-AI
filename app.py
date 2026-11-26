@@ -58,15 +58,25 @@ def shopping_chat(message, history, session):
                 f"Your demo order **{record['order_ref']}** for **{record['product_title']}** "
                 f"is currently **{record['status']}**. This is a simulated order; no real shipment exists."
             )
+            order_panel = (
+                "## Order status lookup\\n\\n"
+                f"**Order ID:** {record['order_ref']}\\n\\n"
+                f"**Product:** {record['product_title']}\\n\\n"
+                f"**Total:** ₹{int(record['total_price']):,}\\n\\n"
+                f"**Current status:** {record['status']}\\n\\n"
+                "Simulated order only — no real shipment exists."
+            )
         else:
             answer = f"I couldn't find demo order **{order_match.group(0)}** in the order history."
+            order_panel = "No matching demo order was found."
         history = list(history or [])
         history.extend([{"role": "user", "content": message}, {"role": "assistant", "content": answer}])
         return (
             history, session,
             shopping_catalogue.format_recommendations(session.get("shopping", {}).get("recommendations", [])),
-            "No new order has been placed in this conversation.",
+            order_panel,
             crm.recent_demo_orders(),
+            "",
         )
 
     answer, session = shopping_agent.respond(message, session)
@@ -118,6 +128,7 @@ def shopping_chat(message, history, session):
         recommendation_panel,
         order_confirmation,
         crm.recent_demo_orders(),
+        "",
     )
 
 
@@ -861,12 +872,12 @@ with gr.Blocks(
         send.click(
             shopping_chat,
             [message, chatbot, session_state],
-            [chatbot, session_state, recommendations_panel, order_confirmation, orders_table],
+            [chatbot, session_state, recommendations_panel, order_confirmation, orders_table, message],
         )
         message.submit(
             shopping_chat,
             [message, chatbot, session_state],
-            [chatbot, session_state, recommendations_panel, order_confirmation, orders_table],
+            [chatbot, session_state, recommendations_panel, order_confirmation, orders_table, message],
         )
     refresh_orders_btn.click(refresh_demo_orders, [], [orders_table])
     update_order_btn.click(
