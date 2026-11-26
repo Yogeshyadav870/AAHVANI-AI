@@ -14,12 +14,11 @@ from crm import CRM
 
 try:
     from fastrtc import WebRTC
-    from live_voice import AahvaniLiveHandler, send_live_text as send_live_text_to_session
+    from live_voice import AahvaniLiveHandler
     LIVE_VOICE_AVAILABLE = True
 except ImportError as live_import_error:
     WebRTC = None
     AahvaniLiveHandler = None
-    send_live_text_to_session = None
     LIVE_VOICE_AVAILABLE = False
     LIVE_VOICE_IMPORT_ERROR = str(live_import_error)
 
@@ -32,16 +31,6 @@ SAMPLE_SLOTS = ["Demo slot 1 — 11:00 AM", "Demo slot 2 — 2:00 PM", "Demo slo
 
 def initial_state():
     return agent.new_session()
-
-
-def send_live_text_from_ui(text):
-    cleaned = (text or "").strip()
-    if not cleaned:
-        return "", "Type a message before sending."
-    if not LIVE_VOICE_AVAILABLE or send_live_text_to_session is None:
-        return cleaned, "Live Voice Mode is not available in this installation."
-    success, status = send_live_text_to_session(cleaned)
-    return ("" if success else cleaned), status
 
 
 def display_lead(session):
@@ -465,8 +454,40 @@ label, .label-wrap span { color: #6e6052 !important; font-weight: 700 !important
     background: linear-gradient(150deg, #f5ede4 0%, #f8f2eb 100%) !important;
     padding: 12px !important;
 }
-#aahvani-live-webrtc button {
-    border-radius: 999px !important;
+#aahvani-live-webrtc .input-container {
+    align-items: center !important;
+    gap: 9px !important;
+    padding: 10px 12px !important;
+    border: 1px solid #e7d5c0 !important;
+    border-radius: 18px !important;
+    background: #fffdf9 !important;
+}
+#aahvani-live-webrtc .input-container textarea {
+    min-height: 46px !important;
+    border: 1px solid #e7d5c0 !important;
+    border-radius: 13px !important;
+    background: #fffaf3 !important;
+    color: #30251b !important;
+}
+#aahvani-live-webrtc .input-container button {
+    width: 46px !important;
+    min-width: 46px !important;
+    height: 46px !important;
+    border: 1px solid #d8b77f !important;
+    border-radius: 50% !important;
+    background: #f6ead8 !important;
+    color: #855b16 !important;
+    cursor: pointer !important;
+    transition: transform .15s ease, background .15s ease, box-shadow .15s ease !important;
+}
+#aahvani-live-webrtc .input-container button:hover {
+    background: #edd7b6 !important;
+    transform: translateY(-1px) !important;
+    box-shadow: 0 3px 10px rgba(112, 75, 21, .16) !important;
+}
+#aahvani-live-webrtc .input-container button svg {
+    width: 23px !important;
+    height: 23px !important;
 }
 #speech-output { border-radius: 14px !important; }
 #crm-table {
@@ -609,44 +630,29 @@ with gr.Blocks(
             </div>
         </div>
         <div class="live-mode-note">
-            Click <strong>Start conversation</strong> and AAHVANI will greet you automatically.
-            Then speak naturally, or type a message below. You can interrupt the agent while it is speaking.
-            Customer transcripts are automatically saved to the local CRM. Use headphones for the clearest audio.
+            Click the <strong>microphone icon</strong> to start a live conversation. AAHVANI will greet you automatically.
+            Speak naturally, or type in the input and press Enter. While connected, the microphone button mutes/unmutes you,
+            the speaker button mutes/unmutes AAHVANI, and the square button ends the conversation.
+            Customer transcripts are automatically saved to the local CRM. Use headphones for the clearest conversation.
         </div>
         """)
         if LIVE_VOICE_AVAILABLE:
             live_audio = WebRTC(
-                label="Speak Up",
+                label="Speak Up — type or use the microphone",
                 mode="send-receive",
                 modality="audio",
-                variant="wave",
-                button_labels={
-                    "start": "Start conversation",
-                    "stop": "End conversation",
-                    "waiting": "Connecting…",
-                },
+                variant="textbox",
+                icon_button_color="#b98527",
+                pulse_color="#d5a24d",
                 elem_id="aahvani-live-webrtc",
             )
             live_status = gr.Markdown(
-                "Ready. Click Start conversation; AAHVANI will greet you, then listen for your reply.",
+                "Ready. Click the microphone icon to connect; AAHVANI will greet you automatically.",
                 elem_classes=["status-note"],
             )
-            with gr.Row(elem_classes=["live-text-row"]):
-                live_text_input = gr.Textbox(
-                    placeholder="Or type a message to AAHVANI…",
-                    show_label=False,
-                    lines=1,
-                    scale=8,
-                    elem_id="live-text-input",
-                )
-                live_text_send = gr.Button(
-                    "Send to AAHVANI",
-                    variant="secondary",
-                    scale=2,
-                    elem_id="live-text-send",
-                )
             gr.Markdown(
-                "Lead details are saved automatically as the customer speaks or types. "
+                "Controls: microphone = start / mute yourself; speaker = mute or unmute AAHVANI; "
+                "square = end conversation. To send text, type in the built-in input and press Enter. "
                 "Demo appointments still require selecting a slot and clicking **Confirm demo booking**.",
                 elem_classes=["live-control-hint"],
             )
@@ -760,16 +766,6 @@ with gr.Blocks(
             ],
             queue=False,
             show_progress="hidden",
-        )
-        live_text_send.click(
-            send_live_text_from_ui,
-            inputs=[live_text_input],
-            outputs=[live_text_input, live_status],
-        )
-        live_text_input.submit(
-            send_live_text_from_ui,
-            inputs=[live_text_input],
-            outputs=[live_text_input, live_status],
         )
     send.click(chat, [message, chatbot, session_state], outputs)
     message.submit(chat, [message, chatbot, session_state], outputs)
