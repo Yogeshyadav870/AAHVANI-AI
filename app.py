@@ -137,55 +137,38 @@ def refresh_crm():
 
 CUSTOM_CSS = """
 :root {
-    --page-bg: #f6f7ff;
-    --ink: #17264b;
-    --muted: #71809f;
-    --teal: #18bfb5;
-    --blue: #477df0;
-    --violet: #9378eb;
-    --line: rgba(116, 139, 190, .18);
+    --page-bg: #dfcfbf;
+    --card-bg: #fffdf9;
+    --inner-bg: #f6eee5;
+    --inner-bg-soft: #faf5ef;
+    --ink: #211a14;
+    --muted: #74685c;
+    --gold: #a97617;
+    --gold-deep: #87590f;
+    --gold-soft: #e8d4ae;
+    --line: #e5d6c7;
+    --shadow: rgba(79, 54, 30, .12);
 }
 
 html, body {
     min-height: 100%;
-    background: #f6f7ff !important;
+    background: var(--page-bg) !important;
 }
 body {
     color: var(--ink) !important;
     background:
-        radial-gradient(ellipse at 8% 15%, rgba(91, 221, 211, .22), transparent 30%),
-        radial-gradient(ellipse at 90% 8%, rgba(162, 146, 255, .22), transparent 34%),
-        radial-gradient(ellipse at 60% 94%, rgba(110, 170, 255, .16), transparent 38%),
-        linear-gradient(135deg, #fbfcff 0%, #f4f5ff 52%, #f8f6ff 100%) fixed !important;
+        radial-gradient(ellipse at 12% 8%, rgba(255, 250, 243, .48), transparent 34%),
+        radial-gradient(ellipse at 92% 92%, rgba(245, 222, 194, .42), transparent 32%),
+        linear-gradient(135deg, #e2d1c0 0%, #ddcbb9 48%, #e6d4c2 100%) fixed !important;
 }
-
-/* Keep the generated network as a very soft texture in the page margins. */
-#ambient-background {
-    position: fixed;
-    inset: 0;
-    z-index: 0;
-    overflow: hidden;
-    pointer-events: none;
-    background:
-        radial-gradient(circle at 5% 44%, rgba(61, 211, 200, .12), transparent 23%),
-        radial-gradient(circle at 96% 55%, rgba(113, 133, 246, .12), transparent 24%);
-}
-.ambient-network {
-    opacity: .20 !important;
-    filter: none !important;
-}
-#ambient-background:before {
-    opacity: .12 !important;
-    mask-image: linear-gradient(to bottom, black 0%, rgba(0,0,0,.4) 60%, transparent 100%);
-}
-#ambient-background:after { opacity: .08 !important; }
+#ambient-background { display: none !important; }
 
 .gradio-container {
     position: relative !important;
     z-index: 1 !important;
     max-width: 1480px !important;
     margin: 0 auto !important;
-    padding: 26px 30px 52px !important;
+    padding: 28px 30px 54px !important;
     background: transparent !important;
     color: var(--ink) !important;
     font-family: Inter, "Segoe UI", Arial, sans-serif !important;
@@ -198,38 +181,28 @@ body {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    min-height: 188px;
-    padding: 32px 40px;
+    min-height: 190px;
+    padding: 30px 40px;
     margin: 0 0 24px;
     border: 1px solid rgba(255,255,255,.92);
     border-radius: 28px;
     background:
-        radial-gradient(circle at 76% 18%, rgba(80, 217, 207, .22), transparent 28%),
-        linear-gradient(112deg, rgba(255,255,255,.97) 0%, rgba(244,248,255,.97) 55%, rgba(245,241,255,.97) 100%);
-    box-shadow: 0 18px 55px rgba(72, 93, 153, .13), inset 0 1px 0 rgba(255,255,255,1);
+        radial-gradient(ellipse at 80% 100%, rgba(224, 199, 159, .18), transparent 38%),
+        linear-gradient(112deg, #fbf8f3 0%, #f8f4ed 56%, #f5efe5 100%);
+    box-shadow: 0 14px 34px rgba(91, 65, 38, .10), inset 0 1px 0 #fff;
 }
 #hero:before {
     content: "";
     position: absolute;
     z-index: -1;
-    width: 390px;
-    height: 390px;
-    right: 7%;
-    top: -235px;
+    width: 370px;
+    height: 140px;
+    right: 4%;
+    bottom: -95px;
+    border: 1px solid rgba(182, 135, 54, .15);
     border-radius: 50%;
-    background: radial-gradient(circle, rgba(78, 214, 204, .24), rgba(78, 214, 204, 0) 70%);
-}
-#hero:after {
-    content: "";
-    position: absolute;
-    z-index: -1;
-    width: 330px;
-    height: 330px;
-    right: -50px;
-    bottom: -248px;
-    border: 1px solid rgba(97, 149, 235, .23);
-    border-radius: 50%;
-    box-shadow: 0 0 0 30px rgba(95, 135, 232, .045), 0 0 0 62px rgba(95, 135, 232, .035);
+    box-shadow: 0 -16px 0 -15px rgba(182, 135, 54, .12), 0 -32px 0 -31px rgba(182, 135, 54, .10);
+    transform: rotate(-10deg);
 }
 .hero-copy { position: relative; z-index: 1; }
 .hero-kicker {
@@ -237,10 +210,10 @@ body {
     align-items: center;
     gap: 9px;
     margin-bottom: 13px;
-    color: #168f91;
+    color: #936515;
     font-size: 11px;
     font-weight: 800;
-    letter-spacing: 1.8px;
+    letter-spacing: 1.55px;
     text-transform: uppercase;
 }
 .hero-dot {
@@ -248,100 +221,85 @@ body {
     height: 8px;
     display: inline-block;
     border-radius: 50%;
-    background: #24c6b6;
-    box-shadow: 0 0 0 5px rgba(36, 198, 182, .13);
+    background: #bf8d31;
+    box-shadow: 0 0 0 4px rgba(191, 141, 49, .12);
 }
 .hero-tag {
-    padding: 5px 10px;
+    padding: 5px 11px;
     margin-left: 5px;
-    border: 1px solid rgba(91, 139, 192, .22);
+    border: 1px solid #e8ddd0;
     border-radius: 99px;
-    color: #627391;
-    background: rgba(255,255,255,.66);
+    color: #75685a;
+    background: rgba(255,255,255,.62);
     font-size: 9px;
     letter-spacing: 1px;
 }
 #hero h1 {
     margin: 0;
-    color: #1a2b57;
-    font-size: clamp(36px, 4vw, 50px);
-    font-weight: 850;
-    line-height: 1.08;
-    letter-spacing: 1.1px;
+    color: #211a14;
+    font-family: Georgia, "Times New Roman", serif;
+    font-size: clamp(38px, 4.1vw, 54px);
+    font-weight: 700;
+    line-height: 1.06;
+    letter-spacing: .2px;
 }
 #hero h1 span {
-    color: #20bfb7;
-    text-shadow: 0 4px 16px rgba(32, 191, 183, .16);
+    color: #987022;
+    text-shadow: 0 2px 0 rgba(255,255,255,.35);
 }
 #hero p {
     margin: 11px 0 0;
-    color: #6c7b9c;
+    color: #716456;
     font-size: 15px;
     line-height: 1.6;
 }
-.hero-orbit {
+.hero-brandmark {
     position: relative;
-    width: 128px;
-    height: 128px;
-    flex: 0 0 128px;
-    margin: 0 46px 0 24px;
-    border: 1px solid rgba(64, 188, 194, .32);
-    border-radius: 50%;
-    background: radial-gradient(circle, rgba(72, 218, 205, .24), rgba(103, 165, 246, .08) 60%, transparent 65%);
-    box-shadow: 0 0 42px rgba(74, 187, 202, .14), inset 0 0 25px rgba(111, 174, 239, .13);
+    z-index: 1;
+    display: block;
+    width: 178px;
+    height: 142px;
+    flex: 0 0 178px;
+    margin: 0 0 0 28px;
+    overflow: visible;
 }
-.hero-orbit:before, .hero-orbit:after {
-    content: "";
-    position: absolute;
-    inset: 15px;
-    border: 1px solid rgba(67, 174, 195, .28);
-    border-radius: 50%;
-}
-.hero-orbit:after { inset: 31px; border-color: rgba(111, 138, 226, .25); }
-.hero-orbit-core {
-    position: absolute;
-    inset: 48px;
-    border-radius: 50%;
-    background: linear-gradient(135deg, #4de2cc, #4c8cf5);
-    box-shadow: 0 0 23px rgba(67, 192, 214, .38);
-}
+.hero-brandmark svg { width: 100%; height: 100%; overflow: visible; }
 
-.kpi-row { gap: 16px !important; margin: 0 0 20px !important; }
+.kpi-row { gap: 16px !important; margin: 0 0 22px !important; }
 .kpi-card {
-    padding: 14px 18px 10px !important;
-    border: 1px solid rgba(255,255,255,.95) !important;
-    border-radius: 19px !important;
-    background: linear-gradient(135deg, rgba(255,255,255,.96), rgba(246,249,255,.94)) !important;
-    box-shadow: 0 12px 30px rgba(83, 105, 163, .10), inset 0 1px 0 #fff !important;
+    min-height: 126px !important;
+    padding: 19px 22px 13px !important;
+    border: 1px solid #eee5da !important;
+    border-radius: 24px !important;
+    background: linear-gradient(145deg, #fffefa 0%, #fffdf9 100%) !important;
+    box-shadow: 0 10px 25px rgba(83, 59, 35, .09), inset 0 1px 0 #fff !important;
 }
 .kpi-card label {
-    color: #7584a3 !important;
+    color: #76695b !important;
     font-size: 10px !important;
     font-weight: 800 !important;
-    letter-spacing: 1.35px !important;
+    letter-spacing: 1.45px !important;
+    text-transform: uppercase;
 }
 .kpi-card input {
-    color: #1d315c !important;
-    font-size: 26px !important;
-    font-weight: 850 !important;
-}
-#voice-send-button {
-    min-height: 52px !important;
-    color: white !important;
-    background: linear-gradient(110deg, #1bc7b7, #2d9fe0 58%, #6584ef) !important;
-    border: 1px solid rgba(255,255,255,.65) !important;
-    box-shadow: 0 9px 24px rgba(56, 155, 202, .22) !important;
-    letter-spacing: .15px;
+    padding-left: 0 !important;
+    border: 0 !important;
+    background: transparent !important;
+    box-shadow: none !important;
+    color: #241b14 !important;
+    font-family: Georgia, "Times New Roman", serif !important;
+    font-size: 34px !important;
+    font-weight: 700 !important;
 }
 
-.workspace-grid, .insights-grid { gap: 20px !important; align-items: flex-start !important; }
+.workspace-grid, .insights-grid { gap: 20px !important; align-items: stretch !important; }
 .surface-card, .panel {
-    background: rgba(255,255,255,.82) !important;
+    background: linear-gradient(145deg, #fffefa 0%, #fffdf9 100%) !important;
     border: 1px solid rgba(255,255,255,.96) !important;
-    border-radius: 22px !important;
-    padding: 20px !important;
-    box-shadow: 0 16px 42px rgba(84, 102, 157, .11), inset 0 1px 0 #fff !important;
-    backdrop-filter: blur(18px);
+    border-radius: 25px !important;
+    padding: 21px !important;
+    box-shadow: 0 13px 30px rgba(83, 59, 35, .10), inset 0 1px 0 #fff !important;
+    backdrop-filter: blur(12px);
 }
 .right-rail { gap: 16px !important; }
 .section-head {
@@ -356,88 +314,109 @@ body {
     width: 37px;
     height: 37px;
     flex: 0 0 37px;
-    border-radius: 13px;
-    color: #199f9e;
-    background: linear-gradient(145deg, rgba(46, 213, 195, .16), rgba(91, 141, 241, .12));
-    border: 1px solid rgba(68, 185, 193, .18);
+    border-radius: 12px;
+    color: #916313;
+    background: linear-gradient(145deg, #f7eddd, #f2e7d6);
+    border: 1px solid #ebddc9;
     font-size: 17px;
 }
 .section-head h2 {
     margin: 0;
-    color: #1f3158;
-    font-size: 17px;
+    color: #241c15;
+    font-size: 18px;
     font-weight: 780;
-    letter-spacing: .1px;
+    letter-spacing: -.2px;
 }
 .section-head p {
     margin: 4px 0 0;
-    color: #7886a2;
+    color: #776a5d;
     font-size: 12px;
     line-height: 1.5;
 }
 
 #conversation-chat {
     overflow: hidden;
-    border: 1px solid rgba(133, 153, 199, .16) !important;
+    border: 1px solid #e8d9c9 !important;
     border-radius: 18px !important;
-    background: rgba(247,249,255,.96) !important;
-    box-shadow: inset 0 1px 8px rgba(84, 105, 157, .035);
+    background: linear-gradient(150deg, #f5ede4 0%, #f8f2eb 100%) !important;
+    box-shadow: inset 0 1px 5px rgba(83, 59, 35, .035);
 }
 #conversation-chat .message-wrap, #conversation-chat .wrap { background: transparent !important; }
-#conversation-chat .message { border-radius: 16px !important; }
-#message-input textarea, textarea, input, select {
-    border: 1px solid rgba(129, 150, 195, .22) !important;
+#conversation-chat .message { border-radius: 15px !important; }
+#message-input textarea,
+textarea, input, select {
+    border: 1px solid #e3d3c2 !important;
     border-radius: 13px !important;
-    background: rgba(255,255,255,.96) !important;
-    color: #23365d !important;
-    box-shadow: 0 2px 7px rgba(79, 97, 150, .035) !important;
+    background: linear-gradient(145deg, #f7f0e8, #f9f4ee) !important;
+    color: #30251b !important;
+    box-shadow: inset 0 1px 2px rgba(83, 59, 35, .025) !important;
 }
-textarea::placeholder, input::placeholder { color: #9aa7c0 !important; }
-label, .label-wrap span { color: #657596 !important; font-weight: 680 !important; }
-.gradio-container .prose h3 { color: #25365e !important; }
-.gradio-container .prose, .gradio-container p { color: #687a9b; }
+textarea::placeholder, input::placeholder { color: #897b6d !important; }
+label, .label-wrap span { color: #6e6052 !important; font-weight: 700 !important; }
+.gradio-container .prose h3 { color: #2a2119 !important; }
+.gradio-container .prose, .gradio-container p { color: #74675a; }
+
 .gradio-container button {
     min-height: 44px;
     border-radius: 13px !important;
-    font-weight: 730 !important;
+    font-weight: 720 !important;
     transition: transform .16s ease, filter .16s ease, box-shadow .16s ease;
 }
-.gradio-container button:hover { filter: brightness(1.03); transform: translateY(-1px); }
+.gradio-container button:hover { filter: brightness(1.035); transform: translateY(-1px); }
 .gradio-container button.primary, .gradio-container .primary {
-    border: 1px solid rgba(255,255,255,.62) !important;
-    background: linear-gradient(110deg, #20c7b7 0%, #329fe0 52%, #6b85ef 100%) !important;
-    color: #fff !important;
-    box-shadow: 0 8px 22px rgba(67, 153, 200, .18) !important;
+    border: 1px solid rgba(255,255,255,.3) !important;
+    background: linear-gradient(135deg, #332316 0%, #1e1711 100%) !important;
+    color: #fffdf9 !important;
+    box-shadow: 0 7px 17px rgba(58, 38, 20, .17) !important;
 }
 .gradio-container button.secondary {
-    border: 1px solid rgba(126, 153, 202, .22) !important;
-    background: linear-gradient(135deg, #fff, #f2f5ff) !important;
-    color: #45618d !important;
-    box-shadow: 0 4px 12px rgba(78, 102, 162, .07) !important;
+    border: 1px solid #e1d1bf !important;
+    background: linear-gradient(135deg, #fffdf9, #f5ede3) !important;
+    color: #654719 !important;
+    box-shadow: 0 4px 12px rgba(83, 59, 35, .07) !important;
+}
+#voice-send-button {
+    min-height: 52px !important;
+    color: #fffdf8 !important;
+    background: linear-gradient(110deg, #b98932 0%, #98671c 100%) !important;
+    border: 1px solid rgba(255,255,255,.55) !important;
+    box-shadow: 0 8px 20px rgba(139, 94, 26, .19) !important;
+    letter-spacing: .1px;
+}
+.slot-picker {
+    padding: 12px 14px !important;
+    border: 1px solid #e8d9c9 !important;
+    border-radius: 15px !important;
+    background: #f8f2eb !important;
 }
 #lead-panel, #booking-panel, #summary-panel, #crm-panel { min-width: 0; }
-.status-note { color: #71809f; font-size: 12px; line-height: 1.55; }
+.status-note { color: #776a5d; font-size: 12px; line-height: 1.55; }
 #voice-note {
     padding: 11px 14px;
-    border-left: 3px solid #42cfc0;
+    border-left: 3px solid #b58a42;
     border-radius: 0 11px 11px 0;
-    background: rgba(71, 201, 190, .08);
-    color: #7283a0;
+    background: #f6eee4;
+    color: #786a5a;
     font-size: 12px;
     line-height: 1.5;
 }
 #speech-output { border-radius: 14px !important; }
 #crm-table { border-radius: 14px; overflow: hidden; }
-footer { opacity: .50 !important; }
+footer { opacity: .48 !important; }
 
 @media (max-width: 850px) {
     .gradio-container { padding: 14px 12px 32px !important; }
-    #hero { min-height: 150px; padding: 25px 22px; }
-    .hero-orbit { width: 76px; height: 76px; flex-basis: 76px; margin-right: 5px; }
-    .hero-orbit:before { inset: 10px; }
-    .hero-orbit:after { inset: 20px; }
-    .hero-orbit-core { inset: 30px; }
+    #hero { min-height: 150px; padding: 23px 21px; }
+    #hero h1 { font-size: 36px; }
+    .hero-brandmark { width: 88px; height: 80px; flex-basis: 88px; margin-left: 8px; }
     .surface-card, .panel { padding: 15px !important; }
+    .kpi-card { min-height: 108px !important; padding: 13px 14px 8px !important; }
+}
+@media (max-width: 520px) {
+    .hero-brandmark { width: 62px; height: 62px; flex-basis: 62px; }
+    #hero { padding: 20px 17px; }
+    .hero-tag { display: none; }
+    #hero p { font-size: 13px; }
 }
 @media (prefers-reduced-motion: reduce) { * { transition: none !important; scroll-behavior: auto !important; } }
 """
@@ -446,80 +425,42 @@ with gr.Blocks(title=APP_NAME) as demo:
     session_state = gr.State(initial_state())
     last_response_state = gr.State("")
     gr.HTML("""
-    <div id="ambient-background" aria-hidden="true">
-      <svg class="ambient-network" viewBox="0 0 1600 1000" preserveAspectRatio="xMidYMid slice">
-        <defs>
-          <linearGradient id="networkTeal" x1="0" y1="0" x2="1" y2="1">
-            <stop offset="0" stop-color="#50e1d0" stop-opacity=".82"/>
-            <stop offset="1" stop-color="#50e1d0" stop-opacity=".10"/>
-          </linearGradient>
-          <linearGradient id="networkBlue" x1="0" y1="0" x2="1" y2="1">
-            <stop offset="0" stop-color="#67aaff" stop-opacity=".12"/>
-            <stop offset="1" stop-color="#67aaff" stop-opacity=".82"/>
-          </linearGradient>
-          <radialGradient id="networkGlow">
-            <stop offset="0" stop-color="#3bd8c8" stop-opacity=".26"/>
-            <stop offset="1" stop-color="#3bd8c8" stop-opacity="0"/>
-          </radialGradient>
-        </defs>
-        <circle cx="55" cy="490" r="250" fill="url(#networkGlow)"/>
-        <circle cx="1545" cy="390" r="290" fill="url(#networkGlow)"/>
-        <circle cx="1545" cy="390" r="190" fill="none" stroke="#55d9ce" stroke-opacity=".30" stroke-width="1.2"/>
-        <circle cx="1545" cy="390" r="225" fill="none" stroke="#55d9ce" stroke-opacity=".18" stroke-width="1"/>
-        <circle cx="55" cy="490" r="155" fill="none" stroke="#62aaff" stroke-opacity=".24" stroke-width="1.2"/>
-        <circle cx="55" cy="490" r="195" fill="none" stroke="#62aaff" stroke-opacity=".16" stroke-width="1"/>
-        <g fill="none" stroke="url(#networkTeal)" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
-          <path d="M0 235 L70 235 L112 277 L172 277 L218 323"/>
-          <path d="M0 330 L58 330 L104 376 L165 376 L205 416 L248 416"/>
-          <path d="M0 595 L68 595 L118 545 L173 545 L228 490"/>
-          <path d="M0 690 L58 690 L106 642 L160 642 L210 592 L260 592"/>
-          <path d="M75 0 L75 78 L122 125 L122 185 L170 233"/>
-          <path d="M180 1000 L180 920 L226 874 L226 805 L277 754"/>
-        </g>
-        <g fill="none" stroke="url(#networkBlue)" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
-          <path d="M1600 175 L1534 175 L1485 224 L1425 224 L1378 270"/>
-          <path d="M1600 278 L1542 278 L1495 325 L1438 325 L1393 370 L1352 370"/>
-          <path d="M1600 610 L1538 610 L1487 559 L1430 559 L1382 510"/>
-          <path d="M1600 730 L1542 730 L1490 678 L1434 678 L1380 624 L1335 624"/>
-          <path d="M1510 0 L1510 74 L1465 119 L1465 180 L1415 230"/>
-          <path d="M1410 1000 L1410 920 L1364 874 L1364 814 L1312 762"/>
-        </g>
-        <g fill="#83f0df" stroke="#071321" stroke-width="4">
-          <circle cx="70" cy="235" r="5"/><circle cx="112" cy="277" r="4"/>
-          <circle cx="172" cy="277" r="5"/><circle cx="104" cy="376" r="4"/>
-          <circle cx="165" cy="376" r="5"/><circle cx="118" cy="545" r="5"/>
-          <circle cx="173" cy="545" r="4"/><circle cx="106" cy="642" r="4"/>
-          <circle cx="160" cy="642" r="5"/><circle cx="122" cy="125" r="4"/>
-          <circle cx="226" cy="874" r="4"/>
-        </g>
-        <g fill="#86baff" stroke="#071321" stroke-width="4">
-          <circle cx="1534" cy="175" r="5"/><circle cx="1485" cy="224" r="4"/>
-          <circle cx="1425" cy="224" r="5"/><circle cx="1495" cy="325" r="4"/>
-          <circle cx="1438" cy="325" r="5"/><circle cx="1487" cy="559" r="5"/>
-          <circle cx="1430" cy="559" r="4"/><circle cx="1490" cy="678" r="4"/>
-          <circle cx="1434" cy="678" r="5"/><circle cx="1465" cy="119" r="4"/>
-          <circle cx="1364" cy="874" r="4"/>
-        </g>
-        <g fill="none" stroke="#7de9dc" stroke-opacity=".34" stroke-width="1.2">
-          <circle cx="172" cy="277" r="13"/><circle cx="165" cy="376" r="13"/>
-          <circle cx="118" cy="545" r="15"/><circle cx="160" cy="642" r="13"/>
-        </g>
-        <g fill="none" stroke="#8abaff" stroke-opacity=".34" stroke-width="1.2">
-          <circle cx="1425" cy="224" r="13"/><circle cx="1438" cy="325" r="13"/>
-          <circle cx="1487" cy="559" r="15"/><circle cx="1434" cy="678" r="13"/>
-        </g>
-      </svg>
-    </div>
-    """)
-
-    gr.HTML("""
     <header id="hero">
         <div class="hero-copy">
             <div class="hero-kicker"><span class="hero-dot"></span> AI SALES WORKSPACE <span class="hero-tag">LOCAL MVP</span></div>
             <h1>AAHVANI <span>AI</span></h1>
             <p>Intelligent sales conversations, qualified leads, and effortless demo scheduling.</p>
         </div>
-        <div class="hero-orbit" aria-hidden="true"><div class="hero-orbit-core"></div></div>
+        <div class="hero-brandmark" aria-label="AAHVANI AI headset and soundwave logo">
+            <svg viewBox="0 0 220 160" role="img" aria-hidden="true">
+                <defs>
+                    <linearGradient id="aahvaniGold" x1="0" y1="0" x2="1" y2="1">
+                        <stop offset="0" stop-color="#d4a447"/>
+                        <stop offset=".48" stop-color="#a8781d"/>
+                        <stop offset="1" stop-color="#765015"/>
+                    </linearGradient>
+                </defs>
+                <path d="M43 83 C43 28 79 9 113 9 C149 9 177 34 177 83"
+                      fill="none" stroke="url(#aahvaniGold)" stroke-width="12" stroke-linecap="round"/>
+                <path d="M43 77 C36 77 31 83 31 91 L31 113 C31 122 37 128 46 128 L51 128 L51 77 Z"
+                      fill="url(#aahvaniGold)"/>
+                <path d="M177 77 L169 77 L169 128 L176 128 C185 128 191 122 191 113 L191 91 C191 83 185 77 177 77 Z"
+                      fill="url(#aahvaniGold)"/>
+                <g fill="url(#aahvaniGold)">
+                    <rect x="73" y="81" width="8" height="20" rx="4"/>
+                    <rect x="88" y="68" width="8" height="45" rx="4"/>
+                    <rect x="103" y="52" width="8" height="70" rx="4"/>
+                    <rect x="118" y="72" width="8" height="35" rx="4"/>
+                    <rect x="133" y="82" width="8" height="18" rx="4"/>
+                    <rect x="148" y="76" width="7" height="29" rx="3.5"/>
+                </g>
+                <path d="M181 117 C181 136 166 143 150 142 C143 142 138 139 133 135"
+                      fill="none" stroke="url(#aahvaniGold)" stroke-width="6" stroke-linecap="round"/>
+                <circle cx="131" cy="134" r="7" fill="url(#aahvaniGold)"/>
+                <path d="M28 145 C76 157 139 151 190 116 C205 106 210 94 211 83"
+                      fill="none" stroke="url(#aahvaniGold)" stroke-width="4" stroke-linecap="round"/>
+            </svg>
+        </div>
     </header>
     """)
 
@@ -631,6 +572,6 @@ if __name__ == "__main__":
         server_name=os.getenv("HOST", "127.0.0.1"),
         server_port=int(os.getenv("PORT", "7860")),
         share=False,
-        theme=gr.themes.Soft(primary_hue="teal", secondary_hue="blue", neutral_hue="slate"),
+        theme=gr.themes.Soft(primary_hue="amber", secondary_hue="orange", neutral_hue="stone"),
         css=CUSTOM_CSS,
     )
