@@ -3,6 +3,7 @@ from __future__ import annotations
 import asyncio
 import logging
 import os
+import re
 import time
 from typing import Any
 
@@ -462,6 +463,52 @@ question. Never claim to be a human salesperson.
             self.status_message = f"Live connection ended: {exc}"
             await self._publish_ui()
 
+    def _apply_contextual_lead_answer(self, text: str, lead: dict[str, Any]) -> None:
+        """Interpret short live-voice answers against the previous assistant question."""
+        previous_question = next(
+            (
+                item.get("content", "").lower()
+                for item in reversed(self.chat_history)
+                if item.get("role") == "assistant"
+            ),
+            "",
+        )
+        answer = text.strip().lower()
+        is_yes = bool(re.fullmatch(
+            r"(?:yes|yeah|yep|yup|correct|sure|that's right|that is right)[.! ]*",
+            answer,
+        ))
+        is_no = bool(re.fullmatch(
+            r"(?:no|nope|not really|i don't|i do not)[.! ]*",
+            answer,
+        ))
+
+        if (
+            not lead.get("authority")
+            and "decision" in previous_question
+            and ("approve" in previous_question or "final" in previous_question)
+        ):
+            if is_yes:
+                lead["authority"] = "Decision maker"
+            elif is_no:
+                lead["authority"] = "Influencer / requires approval"
+
+        if (
+            not lead.get("budget")
+            and "budget" in previous_question
+            and re.search(r"\\bflexib\\w*\\b|\\bno fixed\\b", answer)
+        ):
+            lead["budget"] = "Flexible (no fixed budget)"
+
+        if (
+            not lead.get("timeline")
+            and any(word in previous_question for word in ("when", "timeline", "implement", "start using"))
+            and re.search(r"\\bsoon\\b|\\basap\\b|\\bas soon as possible\\b", answer)
+        ):
+            lead["timeline"] = "Soon"
+
+        lead["lead_score"], lead["qualification"] = self.agent._score(lead)
+
     async def _record_customer_transcript(self, text: str) -> None:
         cleaned = " ".join(str(text).split()).strip()
         if not cleaned:
@@ -477,6 +524,7 @@ question. Never claim to be a human salesperson.
         )
         lead = self.session_state.setdefault("lead", {})
         self.agent._extract_facts(cleaned, lead)
+        self._apply_contextual_lead_answer(cleaned, lead)
         self.session_state["lead_id"] = self.crm.save_lead(
             lead, self.session_state.get("lead_id")
         )
