@@ -41,7 +41,7 @@ def chat(message, history, session):
     ])
     name, company, email, phone, score, status, sentiment = display_lead(session)
     session["lead_id"] = crm.save_lead(session.get("lead", {}), session.get("lead_id"))
-    return history, session, "", name, company, email, phone, score, status, sentiment, crm.recent_leads()
+    return history, session, "", name, company, email, phone, score, status, sentiment, crm.recent_leads(), answer
 
 
 def speak_text(text):
@@ -450,6 +450,7 @@ footer { opacity: .55 !important; }
 
 with gr.Blocks(title=APP_NAME) as demo:
     session_state = gr.State(initial_state())
+    last_response_state = gr.State("")
     gr.HTML("""
     <div id="ambient-background" aria-hidden="true">
       <svg class="ambient-network" viewBox="0 0 1600 1000" preserveAspectRatio="xMidYMid slice">
@@ -610,12 +611,12 @@ with gr.Blocks(title=APP_NAME) as demo:
                 appointment_count = gr.Number(label="Demo bookings", value=crm.appointment_count(), interactive=False)
             refresh_btn = gr.Button("Refresh CRM", variant="secondary")
 
-    outputs = [chatbot, session_state, message, lead_name, lead_company, lead_email, lead_phone, lead_score, lead_status, sentiment, crm_table]
+    outputs = [chatbot, session_state, message, lead_name, lead_company, lead_email, lead_phone, lead_score, lead_status, sentiment, crm_table, last_response_state]
     send.click(chat, [message, chatbot, session_state], outputs)
     message.submit(chat, [message, chatbot, session_state], outputs)
     audio_input.change(transcribe_audio, [audio_input], [transcribed])
     use_transcript.click(lambda text: text, [transcribed], [message])
-    speak_btn.click(speak_last_response, [chatbot], [speech_output, speech_status])
+    speak_btn.click(speak_text, [last_response_state], [speech_output, speech_status])
     save_lead_btn.click(update_lead_fields, [lead_name, lead_company, lead_email, lead_phone, session_state], [session_state, lead_score, lead_status, crm_table, save_status])
     book_btn.click(book_demo, [slot, session_state], [session_state, crm_table, booking_status])
     summary_btn.click(make_summary, [session_state], [summary])
