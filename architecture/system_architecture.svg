@@ -1,0 +1,113 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1500" height="1040" viewBox="0 0 1500 1040" role="img" aria-labelledby="title desc">
+<title id="title">AAHVANI AI current MVP system architecture</title>
+<desc id="desc">Architecture diagram showing text or voice customer input through Gradio, optional Faster Whisper transcription, the Python sales agent with session memory and local FAQ retrieval, optional Gemini generation, lead qualification and sentiment, SQLite CRM booking, summary and dashboard, and optional Edge TTS speech output.</desc>
+<defs>
+  <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#f6eee5"/><stop offset="1" stop-color="#e4d1be"/></linearGradient>
+  <linearGradient id="gold" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#d3aa60"/><stop offset="1" stop-color="#93651b"/></linearGradient>
+  <linearGradient id="cream" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#fffefa"/><stop offset="1" stop-color="#f8f1e8"/></linearGradient>
+  <filter id="shadow" x="-20%" y="-20%" width="140%" height="150%"><feDropShadow dx="0" dy="7" stdDeviation="8" flood-color="#6d5133" flood-opacity=".12"/></filter>
+  <marker id="arrow" markerWidth="10" markerHeight="10" refX="8" refY="5" orient="auto"><path d="M0 0 L10 5 L0 10 Z" fill="#a77a2f"/></marker>
+  <style>
+    .heading{font:700 38px Georgia,serif;fill:#241c15}
+    .sub{font:16px Arial,sans-serif;fill:#776a5d}
+    .cap{font:700 13px Arial,sans-serif;letter-spacing:1.6px;fill:#966d2e}
+    .boxhead{font:700 19px Arial,sans-serif;fill:#2a2119}
+    .body{font:14px Arial,sans-serif;fill:#716456}
+    .small{font:12px Arial,sans-serif;fill:#837466}
+    .num{font:700 12px Arial,sans-serif;fill:#fff}
+    .line{fill:none;stroke:#a77a2f;stroke-width:2.4;marker-end:url(#arrow)}
+    .dash{fill:none;stroke:#b58a42;stroke-width:2;stroke-dasharray:7 6;marker-end:url(#arrow)}
+  </style>
+</defs>
+<rect width="1500" height="1040" rx="26" fill="url(#bg)"/>
+<rect x="34" y="30" width="1432" height="980" rx="28" fill="#eee2d4" opacity=".58"/>
+<text x="76" y="92" class="cap">ROUND 3 • ADVANCED AI PROJECT CHALLENGE</text>
+<text x="76" y="145" class="heading">AAHVANI AI — Current MVP Architecture</text>
+<text x="76" y="177" class="sub">Autonomous AI Sales Voice Agent | Implemented workflow and optional adapters</text>
+
+<!-- input -->
+<g filter="url(#shadow)">
+ <rect x="565" y="215" width="370" height="86" rx="18" fill="url(#cream)" stroke="#e4d4c2"/>
+</g>
+<circle cx="600" cy="258" r="19" fill="url(#gold)"/><text x="600" y="262" text-anchor="middle" class="num">1</text>
+<text x="635" y="250" class="boxhead">Customer input</text>
+<text x="635" y="274" class="body">Typed message or microphone audio</text>
+
+<!-- arrow -->
+<path d="M750 301 V345" class="line"/>
+
+<!-- UI -->
+<g filter="url(#shadow)">
+ <rect x="520" y="350" width="460" height="86" rx="18" fill="url(#cream)" stroke="#e4d4c2"/>
+</g>
+<circle cx="558" cy="393" r="19" fill="url(#gold)"/><text x="558" y="397" text-anchor="middle" class="num">2</text>
+<text x="594" y="385" class="boxhead">Gradio interface</text>
+<text x="594" y="410" class="body">Chat • Voice controls • Lead panel • Demo booking</text>
+
+<!-- STT left -->
+<path d="M520 392 H370 V483" class="dash"/>
+<g filter="url(#shadow)">
+ <rect x="95" y="486" width="310" height="118" rx="18" fill="url(#cream)" stroke="#d9c4a7"/>
+</g>
+<text x="125" y="523" class="boxhead">Optional speech-to-text</text>
+<text x="125" y="550" class="body">Faster-Whisper • local CPU INT8</text>
+<text x="125" y="575" class="small">Audio → transcription text</text>
+<path d="M405 545 H520" class="dash"/>
+
+<!-- agent -->
+<path d="M750 436 V490" class="line"/>
+<g filter="url(#shadow)">
+ <rect x="520" y="495" width="460" height="115" rx="20" fill="#fffaf0" stroke="#c59a53" stroke-width="2"/>
+</g>
+<circle cx="558" cy="536" r="19" fill="url(#gold)"/><text x="558" y="540" text-anchor="middle" class="num">3</text>
+<text x="594" y="531" class="boxhead">Python sales agent</text>
+<text x="594" y="557" class="body">Context handling • Fact extraction • Response logic</text>
+<text x="594" y="583" class="small">Gemini generation optional; local fallback active in demo</text>
+
+<!-- memory and KB side cards -->
+<path d="M520 554 H420 V690" class="line"/>
+<g filter="url(#shadow)">
+ <rect x="95" y="693" width="310" height="100" rx="17" fill="url(#cream)" stroke="#e4d4c2"/>
+</g>
+<text x="125" y="730" class="boxhead">Session memory</text>
+<text x="125" y="757" class="body">Gradio State • message history • lead context</text>
+
+<path d="M980 552 H1080 V690" class="line"/>
+<g filter="url(#shadow)">
+ <rect x="1095" y="693" width="310" height="100" rx="17" fill="url(#cream)" stroke="#e4d4c2"/>
+</g>
+<text x="1125" y="730" class="boxhead">Local knowledge base</text>
+<text x="1125" y="757" class="body">Markdown FAQ • lexical TF-IDF-style ranking</text>
+
+<!-- business logic -->
+<path d="M750 610 V650" class="line"/>
+<g filter="url(#shadow)">
+ <rect x="420" y="655" width="660" height="105" rx="18" fill="url(#cream)" stroke="#e4d4c2"/>
+</g>
+<circle cx="458" cy="705" r="19" fill="url(#gold)"/><text x="458" y="709" text-anchor="middle" class="num">4</text>
+<text x="494" y="696" class="boxhead">Sales intelligence</text>
+<text x="494" y="723" class="body">BANT-inspired lead score (0–100) • keyword sentiment baseline</text>
+<text x="494" y="744" class="small">Need • Budget • Authority • Timeline</text>
+
+<!-- data store -->
+<path d="M750 760 V805" class="line"/>
+<g filter="url(#shadow)">
+ <rect x="520" y="810" width="460" height="100" rx="18" fill="#fffaf0" stroke="#c59a53" stroke-width="2"/>
+</g>
+<circle cx="558" cy="858" r="19" fill="url(#gold)"/><text x="558" y="862" text-anchor="middle" class="num">5</text>
+<text x="594" y="850" class="boxhead">SQLite CRM</text>
+<text x="594" y="877" class="body">Leads table • Appointments table • Sample demo slots</text>
+
+<!-- outputs -->
+<path d="M750 910 V940 H425 V957" class="line"/>
+<path d="M750 940 H1075 V957" class="line"/>
+<g filter="url(#shadow)">
+ <rect x="180" y="960" width="490" height="0" rx="14" fill="#fff"/>
+</g>
+<rect x="100" y="955" width="620" height="0" fill="none"/>
+<text x="260" y="986" class="small">Call summary + CRM dashboard metrics</text>
+<text x="1010" y="986" class="small">Optional Edge TTS → spoken response (online)</text>
+
+<!-- footer -->
+<text x="76" y="1030" class="small">MVP boundary: no live telephony, external CRM, real calendar, or production-scale load test.</text>
+</svg>
