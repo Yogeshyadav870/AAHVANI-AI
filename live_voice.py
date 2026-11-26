@@ -496,14 +496,14 @@ question. Never claim to be a human salesperson.
         if (
             not lead.get("budget")
             and "budget" in previous_question
-            and re.search(r"\\bflexib\\w*\\b|\\bno fixed\\b", answer)
+            and re.search(r"\bflexib\\w*\b|\bno fixed\b", answer)
         ):
             lead["budget"] = "Flexible (no fixed budget)"
 
         if (
             not lead.get("timeline")
             and any(word in previous_question for word in ("when", "timeline", "implement", "start using"))
-            and re.search(r"\\bsoon\\b|\\basap\\b|\\bas soon as possible\\b", answer)
+            and re.search(r"\bsoon\b|\basap\b|\bas soon as possible\b", answer)
         ):
             lead["timeline"] = "Soon"
 
