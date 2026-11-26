@@ -17,7 +17,7 @@
 
 ### 1. Start the conversation
 
-In the unified chat, connect Live Voice or use the text fallback.
+Choose the Text Chat tab for typing or the Live Speaking tab for microphone-based Gemini Live conversation.
 
 **Customer:** "Hi, I want to buy a smartphone under ₹20,000."
 
@@ -69,7 +69,7 @@ AAHVANI should retrieve laptop options priced within the stated demo budget, sho
 
 ## Voice and text behaviour
 
-In Live mode, the built-in textbox and microphone are part of the same FastRTC component. Start the live session; AAHVANI greets the customer. The customer can then speak or type in the same input area, and both inputs share the same Gemini Live session and conversation history. Use headphones to reduce echo.
+Text Chat and Live Speaking are separate tabs. Text Chat uses the local deterministic shopping workflow. In Live Speaking, start the FastRTC microphone session; AAHVANI greets the customer and listens for speech. The transcript is shown in the Live Speaking chat history and Gemini's audio response plays automatically. Use headphones to reduce echo.
 
 If Live Voice is not configured, the dashboard provides a text-only fallback with the same product catalogue, selection workflow and SQLite order functions.
 
