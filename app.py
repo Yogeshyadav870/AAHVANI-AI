@@ -13,6 +13,7 @@ from agent import AahvaniAgent
 from crm import CRM
 
 APP_NAME = "AAHVANI AI"
+_WHISPER_MODEL = None
 agent = AahvaniAgent()
 crm = CRM()
 SAMPLE_SLOTS = ["Demo slot 1 — 11:00 AM", "Demo slot 2 — 2:00 PM", "Demo slot 3 — 4:30 PM"]
@@ -41,7 +42,7 @@ def chat(message, history, session):
     ])
     name, company, email, phone, score, status, sentiment = display_lead(session)
     session["lead_id"] = crm.save_lead(session.get("lead", {}), session.get("lead_id"))
-    return history, session, "", name, company, email, phone, score, status, sentiment, crm.recent_leads(), answer
+    return history, session, "", name, company, email, phone, score, status, sentiment, crm.recent_leads(), answer, *crm.dashboard_stats()
 
 
 def speak_text(text):
@@ -71,19 +72,32 @@ def speak_last_response(history):
 
 
 def transcribe_audio(audio_path):
+    global _WHISPER_MODEL
     if not audio_path:
         return ""
     try:
         from faster_whisper import WhisperModel
-        model_name = os.getenv("WHISPER_MODEL", "base")
-        model = WhisperModel(model_name, device="cpu", compute_type="int8")
-        segments, _ = model.transcribe(audio_path, vad_filter=True)
+        if _WHISPER_MODEL is None:
+            model_name = os.getenv("WHISPER_MODEL", "base")
+            _WHISPER_MODEL = WhisperModel(model_name, device="cpu", compute_type="int8")
+        segments, _ = _WHISPER_MODEL.transcribe(audio_path, vad_filter=True)
         text = " ".join(segment.text.strip() for segment in segments).strip()
         return text or "No speech detected. Please try again or type your message."
     except ImportError:
         return "Voice transcription is optional. Install requirements-voice.txt and restart. You can continue using text chat."
     except Exception as exc:
         return f"Could not transcribe audio: {exc}"
+
+
+def voice_conversation(transcript, history, session):
+    transcript = (transcript or "").strip()
+    failure_prefixes = ("Could not transcribe audio:", "Voice transcription is optional", "No speech detected")
+    if not transcript or transcript.startswith(failure_prefixes):
+        return (*([gr.skip()] * 15), None, "Record a voice message first, then send it here.")
+
+    result = chat(transcript, history, session)
+    audio_path, speech_status = speak_text(result[11])
+    return (*result, audio_path, f"Recognised: {transcript}\n\n{speech_status}")
 
 
 def update_lead_fields(name, company, email, phone, session):
@@ -97,20 +111,20 @@ def update_lead_fields(name, company, email, phone, session):
     })
     lead["lead_score"], lead["qualification"] = agent._score(lead)
     session["lead_id"] = crm.save_lead(lead, session.get("lead_id"))
-    return session, lead["lead_score"], lead["qualification"], crm.recent_leads(), "Lead saved to the local CRM."
+    return session, lead["lead_score"], lead["qualification"], crm.recent_leads(), "Lead saved to the local CRM.", *crm.dashboard_stats()
 
 
 def book_demo(slot, session):
     session = session or initial_state()
     lead = session.setdefault("lead", {})
     if not lead.get("email") and not lead.get("phone"):
-        return session, crm.recent_leads(), "Add an email address or phone number before booking."
+        return session, crm.recent_leads(), "Add an email address or phone number before booking.", *crm.dashboard_stats()
     session["lead_id"] = crm.save_lead(lead, session.get("lead_id"))
     try:
         crm.book_appointment(session["lead_id"], slot)
     except ValueError as exc:
-        return session, crm.recent_leads(), str(exc)
-    return session, crm.recent_leads(), f"Demo appointment saved for {slot}. This is a local prototype booking, not a live calendar reservation."
+        return session, crm.recent_leads(), str(exc), *crm.dashboard_stats()
+    return session, crm.recent_leads(), f"Demo appointment saved for {slot}. This is a local prototype booking, not a live calendar reservation.", *crm.dashboard_stats()
 
 
 def make_summary(session):
@@ -118,8 +132,7 @@ def make_summary(session):
 
 
 def refresh_crm():
-    rows = crm.recent_leads()
-    return rows, len(rows), crm.appointment_count()
+    return crm.recent_leads(), *crm.dashboard_stats()
 
 
 CUSTOM_CSS = """
@@ -322,6 +335,25 @@ body {
     border-radius: 50%;
     background: #8af2df;
     box-shadow: 0 0 22px rgba(138, 242, 223, .9);
+}
+
+
+.kpi-row { gap: 16px !important; margin: 0 0 20px !important; }
+.kpi-card {
+    padding: 14px 18px 10px !important;
+    border: 1px solid rgba(113, 213, 213, .20) !important;
+    border-radius: 18px !important;
+    background: linear-gradient(135deg, rgba(16, 48, 66, .92), rgba(17, 38, 63, .88)) !important;
+    box-shadow: 0 12px 30px rgba(0,0,0,.16), inset 0 1px 0 rgba(255,255,255,.04) !important;
+}
+.kpi-card label { color: #8fe5dd !important; font-size: 10px !important; letter-spacing: 1.4px !important; }
+.kpi-card input { color: #f2fbff !important; font-size: 25px !important; font-weight: 800 !important; }
+#voice-send-button {
+    background: linear-gradient(110deg, #0d8c83, #168fa8 58%, #376ebc) !important;
+    border: 1px solid rgba(107, 235, 218, .45) !important;
+    box-shadow: 0 8px 26px rgba(19, 158, 157, .24) !important;
+    min-height: 52px !important;
+    letter-spacing: .2px;
 }
 
 .workspace-grid, .insights-grid { gap: 20px !important; align-items: flex-start !important; }
@@ -529,6 +561,15 @@ with gr.Blocks(title=APP_NAME) as demo:
     </header>
     """)
 
+    total_leads_now, qualified_leads_now, bookings_now = crm.dashboard_stats()
+    with gr.Row(elem_classes=["kpi-row"]):
+        with gr.Column(elem_classes=["kpi-card"]):
+            lead_count = gr.Number(label="TOTAL LEADS", value=total_leads_now, interactive=False)
+        with gr.Column(elem_classes=["kpi-card"]):
+            qualified_count = gr.Number(label="QUALIFIED LEADS", value=qualified_leads_now, interactive=False)
+        with gr.Column(elem_classes=["kpi-card"]):
+            appointment_count = gr.Number(label="DEMO BOOKINGS", value=bookings_now, interactive=False)
+
     with gr.Row(elem_classes=["workspace-grid"]):
         with gr.Column(scale=7, elem_classes=["surface-card", "conversation-panel"]):
             gr.HTML("""
@@ -547,6 +588,8 @@ with gr.Blocks(title=APP_NAME) as demo:
             with gr.Row():
                 audio_input = gr.Audio(sources=["microphone"], type="filepath", label="Voice input", scale=3)
                 transcribed = gr.Textbox(label="Transcription", placeholder="Speech will appear here...", scale=4, lines=2)
+            with gr.Row():
+                voice_send_btn = gr.Button("Send voice message & hear reply", variant="primary", elem_id="voice-send-button")
             with gr.Row():
                 use_transcript = gr.Button("Use transcription", variant="secondary")
                 speak_btn = gr.Button("Speak AI response", variant="secondary")
@@ -606,21 +649,19 @@ with gr.Blocks(title=APP_NAME) as demo:
                 datatype=["str", "str", "str", "number", "str", "str", "str"],
                 value=crm.recent_leads(), interactive=False, label="Recent leads", elem_id="crm-table"
             )
-            with gr.Row():
-                lead_count = gr.Number(label="Saved leads", value=len(crm.recent_leads()), interactive=False)
-                appointment_count = gr.Number(label="Demo bookings", value=crm.appointment_count(), interactive=False)
-            refresh_btn = gr.Button("Refresh CRM", variant="secondary")
+            refresh_btn = gr.Button("Refresh CRM & metrics", variant="secondary")
 
-    outputs = [chatbot, session_state, message, lead_name, lead_company, lead_email, lead_phone, lead_score, lead_status, sentiment, crm_table, last_response_state]
+    outputs = [chatbot, session_state, message, lead_name, lead_company, lead_email, lead_phone, lead_score, lead_status, sentiment, crm_table, last_response_state, lead_count, qualified_count, appointment_count]
     send.click(chat, [message, chatbot, session_state], outputs)
     message.submit(chat, [message, chatbot, session_state], outputs)
     audio_input.change(transcribe_audio, [audio_input], [transcribed])
     use_transcript.click(lambda text: text, [transcribed], [message])
+    voice_send_btn.click(voice_conversation, [transcribed, chatbot, session_state], outputs + [speech_output, speech_status])
     speak_btn.click(speak_text, [last_response_state], [speech_output, speech_status])
-    save_lead_btn.click(update_lead_fields, [lead_name, lead_company, lead_email, lead_phone, session_state], [session_state, lead_score, lead_status, crm_table, save_status])
-    book_btn.click(book_demo, [slot, session_state], [session_state, crm_table, booking_status])
+    save_lead_btn.click(update_lead_fields, [lead_name, lead_company, lead_email, lead_phone, session_state], [session_state, lead_score, lead_status, crm_table, save_status, lead_count, qualified_count, appointment_count])
+    book_btn.click(book_demo, [slot, session_state], [session_state, crm_table, booking_status, lead_count, qualified_count, appointment_count])
     summary_btn.click(make_summary, [session_state], [summary])
-    refresh_btn.click(refresh_crm, [], [crm_table, lead_count, appointment_count])
+    refresh_btn.click(refresh_crm, [], [crm_table, lead_count, qualified_count, appointment_count])
 
 
 if __name__ == "__main__":
