@@ -72,6 +72,7 @@ class AahvaniLiveHandler(AsyncStreamHandler):
         self._assistant_is_speaking = False
         self._last_typed_text = ""
         self._last_typed_at = 0.0
+        self._audio_frames_sent = 0
 
     def copy(self) -> "AahvaniLiveHandler":
         return AahvaniLiveHandler()
@@ -554,15 +555,26 @@ question. Never claim to be a human salesperson.
         sample_rate, audio = frame
         if audio is None or self.stop_event.is_set():
             return
-        if int(sample_rate) != INPUT_SAMPLE_RATE:
-            self.status_message = (
-                f"Audio sample-rate mismatch: received {sample_rate} Hz; "
-                f"expected {INPUT_SAMPLE_RATE} Hz."
-            )
+        sample_rate = int(sample_rate)
+        if sample_rate <= 0:
+            self.status_message = "The browser supplied an invalid microphone sample rate."
             await self._publish_ui()
             return
 
-        pcm = _audio_to_pcm_bytes(audio)
+        # FastRTC/browser devices can supply 48 kHz or another native rate.
+        # Normalize every frame to Gemini Live's required 16 kHz mono PCM.
+        audio_array = np.asarray(audio)
+        if audio_array.ndim > 1:
+            audio_array = np.squeeze(audio_array)
+        if sample_rate != INPUT_SAMPLE_RATE and audio_array.size:
+            if not np.issubdtype(audio_array.dtype, np.floating):
+                audio_array = audio_array.astype(np.float32) / 32768.0
+            source_positions = np.arange(audio_array.size, dtype=np.float64) / sample_rate
+            target_count = max(1, int(round(audio_array.size * INPUT_SAMPLE_RATE / sample_rate)))
+            target_positions = np.arange(target_count, dtype=np.float64) / INPUT_SAMPLE_RATE
+            audio_array = np.interp(target_positions, source_positions, audio_array).astype(np.float32)
+
+        pcm = _audio_to_pcm_bytes(audio_array)
         if not pcm:
             return
 
@@ -605,6 +617,10 @@ question. Never claim to be a human salesperson.
                         mime_type=f"audio/pcm;rate={INPUT_SAMPLE_RATE}",
                     )
                 )
+                self._audio_frames_sent += 1
+                if self._audio_frames_sent == 1:
+                    self.status_message = "🎤 Microphone audio is reaching Gemini Live. Speak naturally."
+                    await self._publish_ui()
         except asyncio.CancelledError:
             raise
         except Exception as exc:
@@ -614,88 +630,96 @@ question. Never claim to be a human salesperson.
 
     async def _receive_loop(self) -> None:
         try:
-            async for response in self.session.receive():
-                if self.stop_event.is_set():
-                    break
-                tool_call = getattr(response, "tool_call", None)
-                if tool_call is not None:
-                    await self._execute_live_tool_call(tool_call)
-                    continue
+            # Gemini Live's receive() iterator ends after a single model turn.
+            # Re-enter it for every subsequent customer turn so the session keeps listening.
+            while not self.stop_event.is_set() and self.session is not None:
+                received_event = False
+                async for response in self.session.receive():
+                    received_event = True
+                    if self.stop_event.is_set():
+                        break
+                    tool_call = getattr(response, "tool_call", None)
+                    if tool_call is not None:
+                        await self._execute_live_tool_call(tool_call)
+                        continue
 
-                server_content = getattr(response, "server_content", None)
-                if server_content is None:
-                    continue
+                    server_content = getattr(response, "server_content", None)
+                    if server_content is None:
+                        continue
 
-                # Gemini sends finalized input transcription for the utterance.
-                input_transcription = getattr(server_content, "input_transcription", None)
-                input_text = (
-                    getattr(input_transcription, "text", None)
-                    if input_transcription else None
-                )
-                if input_text:
-                    await self._record_customer_transcript(input_text)
+                    # Gemini sends finalized input transcription for the utterance.
+                    input_transcription = getattr(server_content, "input_transcription", None)
+                    input_text = (
+                        getattr(input_transcription, "text", None)
+                        if input_transcription else None
+                    )
+                    if input_text:
+                        await self._record_customer_transcript(input_text)
 
-                # Output transcription arrives in fragments; collect it into one turn.
-                output_transcription = getattr(server_content, "output_transcription", None)
-                output_text = (
-                    getattr(output_transcription, "text", None)
-                    if output_transcription else None
-                )
-                if output_text:
-                    self._assistant_transcript_buffer.append(output_text)
+                    # Output transcription arrives in fragments; collect it into one turn.
+                    output_transcription = getattr(server_content, "output_transcription", None)
+                    output_text = (
+                        getattr(output_transcription, "text", None)
+                        if output_transcription else None
+                    )
+                    if output_text:
+                        self._assistant_transcript_buffer.append(output_text)
 
-                # Process every audio part in this server event.
-                model_turn = getattr(server_content, "model_turn", None)
-                if model_turn:
-                    for part in (getattr(model_turn, "parts", None) or []):
-                        inline_data = getattr(part, "inline_data", None)
-                        audio_bytes = getattr(inline_data, "data", None) if inline_data else None
-                        if not audio_bytes:
-                            continue
-                        audio = np.frombuffer(audio_bytes, dtype="<i2").copy()
-                        if audio.size:
-                            if not self._assistant_is_speaking:
-                                self._assistant_is_speaking = True
-                                self.status_message = (
-                                    "🔊 AAHVANI is speaking — you can interrupt at any time."
+                    # Process every audio part in this server event.
+                    model_turn = getattr(server_content, "model_turn", None)
+                    if model_turn:
+                        for part in (getattr(model_turn, "parts", None) or []):
+                            inline_data = getattr(part, "inline_data", None)
+                            audio_bytes = getattr(inline_data, "data", None) if inline_data else None
+                            if not audio_bytes:
+                                continue
+                            audio = np.frombuffer(audio_bytes, dtype="<i2").copy()
+                            if audio.size:
+                                if not self._assistant_is_speaking:
+                                    self._assistant_is_speaking = True
+                                    self.status_message = (
+                                        "🔊 AAHVANI is speaking — you can interrupt at any time."
+                                    )
+                                    await self._publish_ui()
+                                await self.output_queue.put(
+                                    (OUTPUT_SAMPLE_RATE, audio.reshape(1, -1))
                                 )
-                                await self._publish_ui()
-                            await self.output_queue.put(
-                                (OUTPUT_SAMPLE_RATE, audio.reshape(1, -1))
-                            )
 
-                interrupted = bool(getattr(server_content, "interrupted", False))
-                turn_complete = bool(getattr(server_content, "turn_complete", False))
-                generation_complete = bool(
-                    getattr(server_content, "generation_complete", False)
-                )
-
-                if interrupted:
-                    # Discard audio still queued on the server when the customer barges in.
-                    queued_items = []
-                    while not self.output_queue.empty():
-                        try:
-                            item = self.output_queue.get_nowait()
-                        except asyncio.QueueEmpty:
-                            break
-                        if not (isinstance(item, tuple) and len(item) == 2):
-                            queued_items.append(item)
-                    for item in queued_items:
-                        await self.output_queue.put(item)
-                    self._assistant_is_speaking = False
-                    await self._flush_agent_transcript(interrupted=True)
-                    self.status_message = (
-                        "🎤 Your turn — AAHVANI is listening. Speak or type below."
+                    interrupted = bool(getattr(server_content, "interrupted", False))
+                    turn_complete = bool(getattr(server_content, "turn_complete", False))
+                    generation_complete = bool(
+                        getattr(server_content, "generation_complete", False)
                     )
-                    await self._publish_ui()
-                elif turn_complete or generation_complete:
-                    self._assistant_is_speaking = False
-                    await self._flush_agent_transcript(interrupted=False)
-                    self.status_message = (
-                        "🎤 Your turn — speak now or type a message below."
-                    )
-                    await self._publish_ui()
 
+                    if interrupted:
+                        # Discard audio still queued on the server when the customer barges in.
+                        queued_items = []
+                        while not self.output_queue.empty():
+                            try:
+                                item = self.output_queue.get_nowait()
+                            except asyncio.QueueEmpty:
+                                break
+                            if not (isinstance(item, tuple) and len(item) == 2):
+                                queued_items.append(item)
+                        for item in queued_items:
+                            await self.output_queue.put(item)
+                        self._assistant_is_speaking = False
+                        await self._flush_agent_transcript(interrupted=True)
+                        self.status_message = (
+                            "🎤 Your turn — AAHVANI is listening. Speak or type below."
+                        )
+                        await self._publish_ui()
+                    elif turn_complete or generation_complete:
+                        self._assistant_is_speaking = False
+                        await self._flush_agent_transcript(interrupted=False)
+                        self.status_message = (
+                            "🎤 Your turn — speak now or type a message below."
+                        )
+                        await self._publish_ui()
+
+
+                if not received_event and not self.stop_event.is_set():
+                    await asyncio.sleep(0.05)
         except asyncio.CancelledError:
             raise
         except Exception as exc:
