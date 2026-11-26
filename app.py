@@ -4,6 +4,7 @@ import asyncio
 import logging
 import os
 import tempfile
+import uuid
 
 logging.basicConfig(
     level=logging.INFO,
@@ -18,6 +19,7 @@ load_dotenv()
 
 from agent import AahvaniAgent
 from crm import CRM
+from shopping import ShoppingAgent, ShoppingCatalogue
 
 try:
     from fastrtc import WebRTC
@@ -33,74 +35,42 @@ APP_NAME = "AAHVANI AI"
 _WHISPER_MODEL = None
 agent = AahvaniAgent()
 crm = CRM()
+shopping_catalogue = ShoppingCatalogue()
+shopping_agent = ShoppingAgent(shopping_catalogue)
 SAMPLE_SLOTS = ["Demo slot 1 — 11:00 AM", "Demo slot 2 — 2:00 PM", "Demo slot 3 — 4:30 PM"]
 
 
 def initial_state():
-    return agent.new_session()
+    session = shopping_agent.new_session()
+    session["session_id"] = str(uuid.uuid4())
+    return session
 
 
-def display_lead(session):
-    lead = (session or {}).get("lead", {})
-    return (
-        lead.get("name", ""), lead.get("company", ""), lead.get("email", ""),
-        lead.get("phone", ""), lead.get("lead_score", 0),
-        lead.get("qualification", "Nurture"), lead.get("sentiment", "neutral").title()
-    )
-
-
-def chat(message, history, session):
+def shopping_chat(message, history, session):
     session = session or initial_state()
-    answer, session = agent.respond(message, session)
+    session.setdefault("session_id", str(uuid.uuid4()))
+    answer, session = shopping_agent.respond(message, session)
+    order_request = session.pop("demo_order_to_create", None)
 
-    # Text Chat shares the same local-service appointment workflow as Gemini Live.
-    request = session.pop("appointment_to_save", None)
-    if request:
-        lead = session.setdefault("lead", {})
-        lead["name"] = request.get("customer_name") or lead.get("name", "")
-        lead["phone"] = request.get("customer_phone") or lead.get("phone", "")
-        lead["email"] = request.get("customer_email") or lead.get("email", "")
-        lead["need"] = f"{request.get('service_category', '')}: {request.get('service_name', '')}".strip(": ")
-        lead["lead_score"], lead["qualification"] = agent._score(lead)
+    if order_request:
+        product = order_request["product"]
         try:
-            session["lead_id"] = crm.save_lead(lead, session.get("lead_id"))
-            record = crm.create_service_appointment_request(
-                lead_id=session["lead_id"],
-                service_category=request["service_category"],
-                service_name=request["service_name"],
-                provider_name=request.get("provider_name") or "Provider to be selected",
-                city=request.get("city") or "Jalandhar",
-                preferred_date=request["preferred_date"],
-                preferred_time=request["preferred_time"],
-                customer_name=request["customer_name"],
-                customer_phone=request.get("customer_phone", ""),
-                customer_email=request.get("customer_email", ""),
-                notes=request.get("notes", ""),
-                source="Text Chat",
+            record = crm.create_demo_order(
+                product=product,
+                quantity=int(order_request.get("quantity") or 1),
+                customer_name="",
+                idempotency_key=f"{session['session_id']}:{product['id']}",
             )
-            saved = session.setdefault("appointments", [])
-            if not any(item.get("appointment_id") == record["id"] for item in saved):
-                saved.append({
-                    "appointment_id": record["id"],
-                    "service_category": record["service_category"],
-                    "service_name": record["service_name"],
-                    "provider_name": record["provider_name"],
-                    "city": record["city"],
-                    "preferred_date": record["preferred_date"],
-                    "preferred_time": record["preferred_time"],
-                    "status": record["status"],
-                })
-            answer = (
-                f"Your {record['service_name']} request has been saved to the AAHVANI CRM. "
-                f"Reference: {record['id'][:8].upper()}. Status: {record['status']}. "
-                "The provider and requested time have not been confirmed yet."
-            )
-            session["active_flow"] = None
-            session["appointment_request"] = None
-            session["appointment_confirmation_pending"] = False
+            session.setdefault("shopping", {})["order"] = record
+            session["shopping"]["awaiting_confirmation"] = False
+            session["shopping"]["awaiting_selection"] = False
+            answer = shopping_agent.format_order_confirmation(record)
         except Exception as exc:
-            answer = f"I couldn't save the appointment request: {exc}. Your details are still here; please try confirming again."
-            session["appointment_confirmation_pending"] = True
+            answer = (
+                "I couldn't create the simulated order. Your selection is still available. "
+                f"Please try again. Details: {type(exc).__name__}: {exc}"
+            )
+            session.setdefault("shopping", {})["awaiting_confirmation"] = True
 
         if session.get("messages") and session["messages"][-1].get("role") == "assistant":
             session["messages"][-1]["content"] = answer
@@ -110,12 +80,38 @@ def chat(message, history, session):
         {"role": "user", "content": message},
         {"role": "assistant", "content": answer},
     ])
-    name, company, email, phone, score, status, sentiment = display_lead(session)
-    session["lead_id"] = crm.save_lead(session.get("lead", {}), session.get("lead_id"))
-    return (
-        history, session, "", name, company, email, phone, score, status, sentiment,
-        crm.recent_leads(), answer, *crm.dashboard_stats(), crm.recent_service_appointments()
+    shopping = session.get("shopping", {})
+    recommendations = shopping.get("recommendations", [])
+    recommendation_panel = (
+        shopping_catalogue.format_recommendations(recommendations)
+        if recommendations else
+        "Your recommendations will appear here once AAHVANI understands what you need."
     )
+    order = shopping.get("order") or {}
+    order_confirmation = (
+        shopping_agent.format_order_confirmation(order)
+        if order else "No demo order has been placed in this conversation yet."
+    )
+    return (
+        history,
+        session,
+        recommendation_panel,
+        order_confirmation,
+        crm.recent_demo_orders(),
+    )
+
+
+def update_demo_order_status(order_ref, status):
+    try:
+        crm.update_demo_order_status(str(order_ref or "").strip(), status)
+        return crm.recent_demo_orders(), f"Order **{str(order_ref).strip()}** updated to **{status}**."
+    except ValueError as exc:
+        return crm.recent_demo_orders(), f"**Could not update order:** {exc}"
+
+
+def refresh_demo_orders():
+    return crm.recent_demo_orders()
+
 
 
 def speak_text(text):
@@ -530,13 +526,13 @@ label, .label-wrap span { color: #6e6052 !important; font-weight: 700 !important
     font-size: 12px;
     line-height: 1.5;
 }
-#aahvani-live-webrtc {
+#aahvani-shopping-webrtc {
     border: 1px solid #e8d9c9 !important;
     border-radius: 17px !important;
     background: linear-gradient(150deg, #f5ede4 0%, #f8f2eb 100%) !important;
     padding: 12px !important;
 }
-#aahvani-live-webrtc .input-container {
+#aahvani-shopping-webrtc .input-container {
     align-items: center !important;
     gap: 9px !important;
     padding: 10px 12px !important;
@@ -544,14 +540,14 @@ label, .label-wrap span { color: #6e6052 !important; font-weight: 700 !important
     border-radius: 18px !important;
     background: #fffdf9 !important;
 }
-#aahvani-live-webrtc .input-container textarea {
+#aahvani-shopping-webrtc .input-container textarea {
     min-height: 46px !important;
     border: 1px solid #e7d5c0 !important;
     border-radius: 13px !important;
     background: #fffaf3 !important;
     color: #30251b !important;
 }
-#aahvani-live-webrtc .input-container button {
+#aahvani-shopping-webrtc .input-container button {
     width: 46px !important;
     min-width: 46px !important;
     height: 46px !important;
@@ -562,12 +558,12 @@ label, .label-wrap span { color: #6e6052 !important; font-weight: 700 !important
     cursor: pointer !important;
     transition: transform .15s ease, background .15s ease, box-shadow .15s ease !important;
 }
-#aahvani-live-webrtc .input-container button:hover {
+#aahvani-shopping-webrtc .input-container button:hover {
     background: #edd7b6 !important;
     transform: translateY(-1px) !important;
     box-shadow: 0 3px 10px rgba(112, 75, 21, .16) !important;
 }
-#aahvani-live-webrtc .input-container button svg {
+#aahvani-shopping-webrtc .input-container button svg {
     width: 23px !important;
     height: 23px !important;
 }
@@ -652,13 +648,12 @@ with gr.Blocks(
     css=CUSTOM_CSS,
 ) as demo:
     session_state = gr.State(initial_state())
-    last_response_state = gr.State("")
     gr.HTML("""
     <header id="hero">
         <div class="hero-copy">
-            <div class="hero-kicker"><span class="hero-dot"></span> AI APPOINTMENT & CRM WORKSPACE <span class="hero-tag">LOCAL MVP</span></div>
+            <div class="hero-kicker"><span class="hero-dot"></span> AI SHOPPING & ORDER WORKSPACE <span class="hero-tag">DEMO STORE</span></div>
             <h1>AAHVANI <span>AI</span></h1>
-            <p>Voice and text conversations for local service requests, sales enquiries, and customer CRM.</p>
+            <p>Your personal AI shopping assistant — discover, compare and order products through natural conversation.</p>
         </div>
         <div class="hero-brandmark" aria-label="AAHVANI AI headset and soundwave logo">
             <svg viewBox="0 0 220 160" role="img" aria-hidden="true">
@@ -693,246 +688,156 @@ with gr.Blocks(
     </header>
     """)
 
-    total_leads_now, qualified_leads_now, bookings_now = crm.dashboard_stats()
-    with gr.Row(elem_classes=["kpi-row"]):
-        with gr.Column(elem_classes=["kpi-card"]):
-            lead_count = gr.Number(label="TOTAL LEADS", value=total_leads_now, interactive=False)
-        with gr.Column(elem_classes=["kpi-card"]):
-            qualified_count = gr.Number(label="QUALIFIED LEADS", value=qualified_leads_now, interactive=False)
-        with gr.Column(elem_classes=["kpi-card"]):
-            appointment_count = gr.Number(label="DEMO BOOKINGS", value=bookings_now, interactive=False)
-
-    with gr.Group(elem_classes=["surface-card"], elem_id="live-voice-panel"):
-        gr.HTML("""
-        <div class="section-head">
-            <div class="section-symbol">🎙</div>
-            <div>
-                <h2>Speak Up — Live Voice Mode</h2>
-                <p>Talk naturally with AAHVANI to ask about services, request appointments, and capture customer details. It listens continuously and can be interrupted.</p>
-            </div>
-        </div>
-        <div class="live-mode-note">
-            Click the <strong>microphone icon</strong> to start a live conversation. AAHVANI will greet you automatically.
-            Speak naturally after the greeting. The waveform interface is voice-only: there is no text composer or send button.
-            Use the microphone control to connect/mute and the stop control to end the session.
-            Customer transcripts and confirmed appointment requests are saved to the local CRM. Appointment requests remain pending until the provider confirms. Use headphones for the clearest conversation.
-        </div>
-        """)
-        if LIVE_VOICE_AVAILABLE:
-            live_audio = WebRTC(
-                label="Speak with AAHVANI — voice only",
-                mode="send-receive",
-                modality="audio",
-                variant="wave",
-                icon_button_color="#b98527",
-                pulse_color="#d5a24d",
-                elem_id="aahvani-live-webrtc",
-            )
-            live_status = gr.Markdown(
-                "Ready. Click the microphone icon to connect; AAHVANI will greet you automatically.",
-                elem_classes=["status-note"],
-            )
-            gr.Markdown(
-                "Voice controls: start the microphone to connect, speak naturally, and use Stop to end the session. "
-                "The Live Voice panel has no typing box or send button.",
-                elem_classes=["live-control-hint"],
-            )
-            live_handler = AahvaniLiveHandler()
-            live_audio.stream(
-                live_handler,
-                inputs=[live_audio],
-                outputs=[live_audio],
-                time_limit=900,
-                # Permit a few browser tabs / reconnect attempts while keeping
-                # the number of simultaneous Gemini Live sessions bounded.
-                concurrency_limit=3,
-            )
-        else:
-            gr.Markdown(
-                "Live Voice Mode is not installed yet. In the project terminal, run "
-                "`pip install -r requirements-live.txt`, then restart AAHVANI AI. "
-                "You will also need a Gemini API key in your local `.env` file. "
-                f"\n\nOptional dependency detail: {LIVE_VOICE_IMPORT_ERROR}",
-                elem_classes=["status-note"],
-            )
-
     with gr.Row(elem_classes=["workspace-grid"]):
-        with gr.Column(scale=7, elem_classes=["surface-card", "conversation-panel"]):
+        with gr.Column(scale=8, elem_classes=["surface-card", "conversation-panel"]):
             gr.HTML("""
             <div class="section-head">
                 <div class="section-symbol">✦</div>
-                <div><h2>Text Chat — Appointments & CRM</h2><p>Request a local service appointment or ask about the Northstar CRM demo.</p></div>
+                <div>
+                    <h2>Chat with AAHVANI</h2>
+                    <p>Tell me what you want to buy. Type or speak in the same conversation.</p>
+                </div>
             </div>
             """)
-            chatbot = gr.Chatbot(height=420, label="Conversation", type="messages", elem_id="conversation-chat")
-            with gr.Row(elem_classes=["composer-row"]):
-                message = gr.Textbox(
-                    placeholder="Try: I need a dental appointment tomorrow at 11 AM...",
-                    show_label=False, scale=8, lines=2, elem_id="message-input"
+            chatbot = gr.Chatbot(
+                value=[{"role": "assistant", "content": "Hi, I'm AAH-vuh-nee AI. What are you looking to buy today?"}],
+                height=520,
+                label="Shopping conversation",
+                type="messages",
+                elem_id="shopping-chat",
+            )
+            if LIVE_VOICE_AVAILABLE and os.getenv("GEMINI_API_KEY", "").strip():
+                live_audio = WebRTC(
+                    label="Type a message or use the microphone",
+                    mode="send-receive",
+                    modality="audio",
+                    variant="textbox",
+                    icon_button_color="#b98527",
+                    pulse_color="#d5a24d",
+                    elem_id="aahvani-shopping-webrtc",
                 )
-                send = gr.Button("Send  ↗", variant="primary", scale=1)
+                live_status = gr.Markdown(
+                    "Ready. Start the live chat with the microphone, then speak or type in the same box.",
+                    elem_classes=["status-note"],
+                )
+                gr.Markdown(
+                    "The text box and microphone share one Gemini Live session and the same conversation memory. "
+                    "Use headphones for clearer voice interaction.",
+                    elem_classes=["live-control-hint"],
+                )
+                live_handler = AahvaniLiveHandler()
+                live_audio.stream(
+                    live_handler,
+                    inputs=[live_audio],
+                    outputs=[live_audio],
+                    time_limit=900,
+                    concurrency_limit=3,
+                )
+            else:
+                message = gr.Textbox(
+                    placeholder="Try: I need a gaming laptop under ₹60,000...",
+                    label="Message AAHVANI",
+                    lines=2,
+                    elem_id="shopping-message",
+                )
+                send = gr.Button("Send message", variant="primary", elem_id="shopping-send")
+                live_status = gr.Markdown(
+                    "Text shopping is ready. Add GEMINI_API_KEY and install requirements-live.txt for live voice + typing in one box.",
+                    elem_classes=["status-note"],
+                )
+                send.click(
+                    shopping_chat,
+                    [message, chatbot, session_state],
+                    [chatbot, session_state, gr.skip(), gr.skip(), gr.skip()],
+                )
+                message.submit(
+                    shopping_chat,
+                    [message, chatbot, session_state],
+                    [chatbot, session_state, gr.skip(), gr.skip(), gr.skip()],
+                )
+
             with gr.Row():
-                audio_input = gr.Audio(sources=["microphone"], type="filepath", label="Voice input", scale=3)
-                transcribed = gr.Textbox(label="Transcription", placeholder="Speech will appear here...", scale=4, lines=2)
-            with gr.Row():
-                voice_send_btn = gr.Button("Send voice message & hear reply", variant="primary", elem_id="voice-send-button")
-            with gr.Row():
-                use_transcript = gr.Button("Use transcription", variant="secondary")
-                speak_btn = gr.Button("Speak AI response", variant="secondary")
-            speech_output = gr.Audio(label="AI voice response", type="filepath", interactive=False, elem_id="speech-output")
-            speech_status = gr.Markdown(elem_classes=["status-note"])
-            gr.HTML("<div id='voice-note'>Voice features are optional. Text chat works without microphone access or additional speech packages.</div>")
+                refresh_orders_btn = gr.Button("Refresh my orders", variant="secondary")
+                refresh_status = gr.Markdown("Choose a product in the conversation to begin.")
 
         with gr.Column(scale=5, elem_classes=["right-rail"]):
-            with gr.Group(elem_classes=["surface-card"], elem_id="lead-panel"):
+            with gr.Group(elem_classes=["surface-card"], elem_id="recommendations-panel"):
                 gr.HTML("""
                 <div class="section-head">
-                    <div class="section-symbol">◈</div>
-                    <div><h2>Lead intelligence</h2><p>Customer profile and buying-readiness signals.</p></div>
+                    <div class="section-symbol">✧</div>
+                    <div><h2>Recommended for you</h2><p>Up to three matching products from the demo catalogue.</p></div>
                 </div>
                 """)
-                lead_name = gr.Textbox(label="Customer name", placeholder="Name")
-                lead_company = gr.Textbox(label="Company", placeholder="Business or organisation")
-                lead_email = gr.Textbox(label="Email", placeholder="name@company.com")
-                lead_phone = gr.Textbox(label="Phone", placeholder="+91 ...")
-                with gr.Row():
-                    lead_score = gr.Number(label="Lead score / 100", value=0, interactive=False)
-                    lead_status = gr.Textbox(label="Qualification", value="Nurture", interactive=False)
-                sentiment = gr.Textbox(label="Sentiment", value="Neutral", interactive=False)
-                save_lead_btn = gr.Button("Save lead to CRM", variant="secondary")
-                save_status = gr.Markdown(elem_classes=["status-note"])
+                recommendations_panel = gr.Markdown(
+                    "Your recommendations will appear here once AAHVANI understands what you need.",
+                    elem_id="shopping-recommendations",
+                )
 
-            with gr.Group(elem_classes=["surface-card"], elem_id="booking-panel"):
+            with gr.Group(elem_classes=["surface-card"], elem_id="order-success-panel"):
                 gr.HTML("""
                 <div class="section-head">
-                    <div class="section-symbol">◷</div>
-                    <div><h2>Schedule a product demo</h2><p>Choose a sample slot to complete the workflow.</p></div>
+                    <div class="section-symbol">✓</div>
+                    <div><h2>Order confirmation</h2><p>Simulated checkout — no real payment or shipment.</p></div>
                 </div>
                 """)
-                slot = gr.Radio(choices=SAMPLE_SLOTS, value=SAMPLE_SLOTS[0], label="Choose a demo slot", elem_classes=["slot-picker"])
-                book_btn = gr.Button("Confirm demo booking", variant="primary")
-                booking_status = gr.Markdown(elem_classes=["status-note"])
+                order_confirmation = gr.Markdown(
+                    "No demo order has been placed in this conversation yet.",
+                    elem_id="order-confirmation",
+                )
 
     with gr.Row(elem_classes=["insights-grid"]):
-        with gr.Column(scale=5, elem_classes=["surface-card"], elem_id="summary-panel"):
-            gr.HTML("""
-            <div class="section-head">
-                <div class="section-symbol">▤</div>
-                <div><h2>Call summary</h2><p>Key customer details and the conversation outcome.</p></div>
-            </div>
-            """)
-            summary = gr.Textbox(lines=9, label="Conversation summary", interactive=False)
-            summary_btn = gr.Button("Generate summary", variant="secondary")
-        with gr.Column(scale=7, elem_classes=["surface-card"], elem_id="crm-panel"):
+        with gr.Column(elem_classes=["surface-card"], elem_id="orders-panel"):
             gr.HTML("""
             <div class="section-head">
                 <div class="section-symbol">▦</div>
-                <div><h2>Local CRM records</h2><p>Customer leads, demo bookings and service appointment requests saved in the local database.</p></div>
+                <div><h2>My orders</h2><p>Track the demo orders created during your shopping conversations.</p></div>
             </div>
             """)
-            crm_table = gr.Dataframe(
-                headers=["Name", "Company", "Email", "Score", "Status", "Sentiment", "Updated"],
-                datatype=["str", "str", "str", "number", "str", "str", "str"],
-                value=crm.recent_leads(), interactive=False, label="Recent leads", elem_id="crm-table"
-            )
-            refresh_btn = gr.Button("Refresh CRM & metrics", variant="secondary")
-
-    with gr.Row(elem_classes=["insights-grid"]):
-        with gr.Column(elem_classes=["surface-card"], elem_id="service-appointments-panel"):
-            gr.HTML("""
-            <div class="section-head">
-                <div class="section-symbol">◷</div>
-                <div>
-                    <h2>Jalandhar service appointment requests</h2>
-                    <p>Appointment requests saved from Live Voice or Text Chat. Requests remain pending until the provider confirms.</p>
-                </div>
-            </div>
-            """)
-            service_appointments_table = gr.Dataframe(
+            orders_table = gr.Dataframe(
                 headers=[
-                    "Customer", "Category", "Service", "Provider", "City",
-                    "Preferred date", "Preferred time", "Status", "Phone",
-                    "Email", "Request ID", "Created",
+                    "Order reference", "Product", "Brand", "Category", "Qty",
+                    "Unit price", "Total", "Status", "Customer", "Created", "Order ID",
                 ],
-                datatype=["str"] * 12,
-                value=crm.recent_service_appointments(),
+                datatype=["str", "str", "str", "str", "number", "number", "number", "str", "str", "str", "str"],
+                value=crm.recent_demo_orders(),
                 interactive=False,
-                label="Service appointment requests",
-                elem_id="service-appointments-table",
-            )
-            refresh_service_appointments_btn = gr.Button(
-                "Refresh appointment requests", variant="secondary"
+                label="Order history",
+                elem_id="demo-orders-table",
             )
             gr.Markdown(
-                "After contacting the provider, use this control to record their response. "
-                "Only select **Confirmed** after the provider has actually confirmed the slot."
+                "For demonstration only, update an order to show the order lifecycle. "
+                "These status changes do not correspond to a real shipment."
             )
             with gr.Row():
-                appointment_request_id = gr.Textbox(
-                    label="Appointment request ID",
-                    placeholder="Paste the request ID from the table",
+                order_reference = gr.Textbox(
+                    label="Order reference",
+                    placeholder="e.g. AAH-12AB34CD",
                 )
-                appointment_status = gr.Dropdown(
-                    choices=[
-                        "Pending provider confirmation",
-                        "Confirmed",
-                        "Declined",
-                        "Cancelled",
+                order_status = gr.Dropdown(
+                    choices=["Pending", "Processing", "Shipped", "Delivered", "Cancelled"],
+                    value="Processing",
+                    label="Demo order status",
+                )
+            update_order_btn = gr.Button("Update demo order status", variant="primary")
+            order_update_message = gr.Markdown(elem_classes=["status-note"])
+
+            if LIVE_VOICE_AVAILABLE and os.getenv("GEMINI_API_KEY", "").strip():
+                live_audio.on_additional_outputs(
+                    lambda *values: values,
+                    outputs=[
+                        live_status, chatbot, recommendations_panel,
+                        order_confirmation, orders_table,
                     ],
-                    value="Confirmed",
-                    label="Provider response",
+                    queue=False,
+                    show_progress="hidden",
                 )
-            provider_confirmation_note = gr.Textbox(
-                label="Provider confirmation reference / note",
-                placeholder="Required when marking Confirmed (e.g. provider reference or confirmation call details)",
-            )
-            update_service_appointment_btn = gr.Button(
-                "Update appointment status", variant="primary"
-            )
-            service_appointment_update_message = gr.Markdown(
-                elem_classes=["status-note"]
-            )
 
-    outputs = [chatbot, session_state, message, lead_name, lead_company, lead_email, lead_phone, lead_score, lead_status, sentiment, crm_table, last_response_state, lead_count, qualified_count, appointment_count, service_appointments_table]
-    if LIVE_VOICE_AVAILABLE:
-        live_audio.on_additional_outputs(
-            lambda *values: values,
-            outputs=[
-                live_status, chatbot, session_state, last_response_state,
-                lead_name, lead_company, lead_email, lead_phone,
-                lead_score, lead_status, sentiment, crm_table,
-                lead_count, qualified_count, appointment_count,
-                service_appointments_table,
-            ],
-            queue=False,
-            show_progress="hidden",
-        )
-    send.click(chat, [message, chatbot, session_state], outputs)
-    message.submit(chat, [message, chatbot, session_state], outputs)
-    audio_input.change(transcribe_audio, [audio_input], [transcribed])
-    use_transcript.click(lambda text: text, [transcribed], [message])
-    voice_send_btn.click(voice_conversation, [transcribed, chatbot, session_state], outputs + [speech_output, speech_status])
-    speak_btn.click(speak_text, [last_response_state], [speech_output, speech_status])
-    save_lead_btn.click(update_lead_fields, [lead_name, lead_company, lead_email, lead_phone, session_state], [session_state, lead_score, lead_status, crm_table, save_status, lead_count, qualified_count, appointment_count])
-    book_btn.click(book_demo, [slot, session_state], [session_state, crm_table, booking_status, lead_count, qualified_count, appointment_count])
-    summary_btn.click(make_summary, [session_state], [summary])
-    refresh_btn.click(refresh_crm, [], [crm_table, lead_count, qualified_count, appointment_count])
-    refresh_service_appointments_btn.click(
-        refresh_service_appointments, [], [service_appointments_table]
+    refresh_orders_btn.click(refresh_demo_orders, [], [orders_table])
+    update_order_btn.click(
+        update_demo_order_status,
+        [order_reference, order_status],
+        [orders_table, order_update_message],
     )
-    update_service_appointment_btn.click(
-        update_service_appointment_status,
-        [
-            appointment_request_id,
-            appointment_status,
-            provider_confirmation_note,
-        ],
-        [
-            service_appointments_table,
-            service_appointment_update_message,
-        ],
-    )
-
 
 if __name__ == "__main__":
     demo.launch(
@@ -940,3 +845,46 @@ if __name__ == "__main__":
         server_port=int(os.getenv("PORT", "7860")),
         share=False,
     )
+
+
+# AAHVANI shopping experience: retain the original warm beige, cream and gold design.
+# The Live Voice component includes its own integrated text composer and microphone.
+# These selectors style that one shared input without changing the project's palette.
+#shopping-chat, #shopping-message, #shopping-recommendations, #order-confirmation,
+#demo-orders-table, #aahvani-shopping-webrtc {
+    border-radius: 16px !important;
+}
+#shopping-chat {
+    background: #fffdf9 !important;
+    border: 1px solid #e7d8c8 !important;
+}
+#shopping-recommendations, #order-confirmation {
+    color: #30251b !important;
+    line-height: 1.65 !important;
+}
+#shopping-recommendations h3 {
+    color: #563d20 !important;
+    margin-bottom: 6px !important;
+}
+#shopping-recommendations hr {
+    border-color: #e7d8c8 !important;
+}
+#aahvani-shopping-webrtc .input-container {
+    align-items: center !important;
+    gap: 9px !important;
+    padding: 10px 12px !important;
+    border: 1px solid #e7d5c0 !important;
+    border-radius: 18px !important;
+    background: #fffdf9 !important;
+}
+#aahvani-shopping-webrtc .input-container textarea {
+    min-height: 46px !important;
+    border: 1px solid #e7d5c0 !important;
+    border-radius: 13px !important;
+    background: #fffaf3 !important;
+    color: #30251b !important;
+}
+#demo-orders-table {
+    overflow: hidden;
+    background: #fffdf9 !important;
+}
