@@ -1,5 +1,6 @@
 # Optional: install this to enable real-time bidirectional voice mode.
 # Pinned versions for the current Gemini Live + FastRTC integration.
 -r requirements.txt
-google-genai==2.0.0
+# Interactions API requires google-genai >=2.3.0; pin current verified release.
+google-genai==3.6.1
 fastrtc==0.0.34
