@@ -170,63 +170,125 @@ question. Never claim to be a human salesperson.
 """.strip()
 
     async def start_up(self) -> None:
-        api_key = os.getenv("GEMINI_API_KEY", "").strip()
-        if not api_key:
-            raise RuntimeError(
-                "Live Voice Mode needs GEMINI_API_KEY. Add your key to the local "
-                ".env file, then restart AAHVANI AI. The key stays on the server."
-            )
-
-        model = os.getenv("GEMINI_LIVE_MODEL", DEFAULT_MODEL).strip() or DEFAULT_MODEL
-        voice = os.getenv("GEMINI_LIVE_VOICE", DEFAULT_VOICE).strip() or DEFAULT_VOICE
-
-        # Select the Gemini Live v1beta endpoint explicitly rather than relying on SDK defaults.
-        self._client = genai.Client(
-            api_key=api_key,
-            http_options=types.HttpOptions(api_version="v1beta"),
-        )
-        config = types.LiveConnectConfig(
-            response_modalities=[types.Modality.AUDIO],
-            system_instruction=self._system_instruction(),
-            speech_config=types.SpeechConfig(
-                voice_config=types.VoiceConfig(
-                    prebuilt_voice_config=types.PrebuiltVoiceConfig(
-                        voice_name=voice
-                    )
-                )
-            ),
-            input_audio_transcription=types.AudioTranscriptionConfig(),
-            output_audio_transcription=types.AudioTranscriptionConfig(),
-        )
-
-        self.status_message = f"Connecting to {model}…"
-        self._session_context = self._client.aio.live.connect(
-            model=model,
-            config=config,
-        )
-        self.session = await self._session_context.__aenter__()
         self._loop = asyncio.get_running_loop()
-        global _ACTIVE_LIVE_HANDLER
-        _ACTIVE_LIVE_HANDLER = self
-
-        self.status_message = "Connected. AAHVANI is greeting you…"
+        self.status_message = "Microphone connected. Preparing AAHVANI's voice session…"
         await self._publish_ui()
 
-        self._tasks = [
-            asyncio.create_task(self._send_audio_loop(), name="aahvani-live-send"),
-            asyncio.create_task(self._receive_loop(), name="aahvani-live-receive"),
-        ]
+        try:
+            api_key = os.getenv("GEMINI_API_KEY", "").strip()
+            if not api_key:
+                raise RuntimeError(
+                    "Live Voice Mode needs GEMINI_API_KEY. Add it to the local "
+                    ".env file and restart AAHVANI AI. The key stays on the server."
+                )
 
-        # Trigger a short spoken greeting as soon as the customer starts the mic.
-        await self.session.send_realtime_input(
-            text=(
-                "A customer has just started a new live conversation. Speak this "
-                "exact opening sentence aloud now: 'Hi, I'm AAH-vuh-nee AI. "
-                "How can I help you?' Pronounce AAH-vuh-nee as AAH / vuh / nee "
-                "(आह्वनी). Do not add any extra introduction. Then stop and wait "
-                "for the customer to speak."
+            requested_model = (
+                os.getenv("GEMINI_LIVE_MODEL", DEFAULT_MODEL).strip() or DEFAULT_MODEL
             )
-        )
+            voice = os.getenv("GEMINI_LIVE_VOICE", DEFAULT_VOICE).strip() or DEFAULT_VOICE
+
+            self._client = genai.Client(
+                api_key=api_key,
+                http_options=types.HttpOptions(api_version="v1beta"),
+            )
+            config = types.LiveConnectConfig(
+                response_modalities=[types.Modality.AUDIO],
+                system_instruction=self._system_instruction(),
+                speech_config=types.SpeechConfig(
+                    voice_config=types.VoiceConfig(
+                        prebuilt_voice_config=types.PrebuiltVoiceConfig(
+                            voice_name=voice
+                        )
+                    )
+                ),
+                input_audio_transcription=types.AudioTranscriptionConfig(),
+                output_audio_transcription=types.AudioTranscriptionConfig(),
+            )
+
+            # Gemini 3.8 Live has recently shown intermittent realtime-audio
+            # failures. Keep it as the preferred model, but retry setup with
+            # Gemini 3.1 Flash Live Preview if the first handshake fails.
+            models_to_try = [requested_model]
+            if requested_model == "gemini-3.8-live":
+                models_to_try.append("gemini-3.1-flash-live-preview")
+
+            last_error = None
+            connected_model = None
+            for candidate_model in models_to_try:
+                self.status_message = f"Connecting to {candidate_model}…"
+                await self._publish_ui()
+                session_context = self._client.aio.live.connect(
+                    model=candidate_model,
+                    config=config,
+                )
+                try:
+                    session = await asyncio.wait_for(
+                        session_context.__aenter__(),
+                        timeout=30,
+                    )
+                    self._session_context = session_context
+                    self.session = session
+                    connected_model = candidate_model
+                    break
+                except Exception as exc:
+                    last_error = exc
+                    try:
+                        await session_context.__aexit__(
+                            type(exc), exc, exc.__traceback__
+                        )
+                    except Exception:
+                        logger.debug(
+                            "Gemini Live context cleanup failed", exc_info=True
+                        )
+                    logger.warning(
+                        "Could not connect to %s: %s: %s",
+                        candidate_model,
+                        type(exc).__name__,
+                        exc,
+                    )
+
+            if self.session is None or connected_model is None:
+                raise RuntimeError(
+                    "Gemini Live could not establish a session. "
+                    f"Last error: {type(last_error).__name__}: {last_error}"
+                ) from last_error
+
+            global _ACTIVE_LIVE_HANDLER
+            _ACTIVE_LIVE_HANDLER = self
+
+            if connected_model != requested_model:
+                self.status_message = (
+                    f"Connected using fallback model {connected_model}. "
+                    f"{requested_model} did not complete its connection."
+                )
+            else:
+                self.status_message = f"Connected to {connected_model}. AAHVANI is greeting you…"
+            await self._publish_ui()
+
+            self._tasks = [
+                asyncio.create_task(self._send_audio_loop(), name="aahvani-live-send"),
+                asyncio.create_task(self._receive_loop(), name="aahvani-live-receive"),
+            ]
+
+            await self.session.send_realtime_input(
+                text=(
+                    "A customer has just started a new live conversation. Speak this "
+                    "exact opening sentence aloud now: 'Hi, I'm AAH-vuh-nee AI. "
+                    "How can I help you?' Pronounce AAH-vuh-nee as AAH / vuh / nee "
+                    "(आह्वनी). Do not add any extra introduction. Then stop and wait "
+                    "for the customer to speak."
+                )
+            )
+        except Exception as exc:
+            logger.exception("AAHVANI Live Voice startup failed")
+            self.status_message = (
+                f"Live connection failed — {type(exc).__name__}: {exc}"
+            )
+            try:
+                await self._publish_ui()
+            except Exception:
+                logger.exception("Could not publish the Live Voice error to the UI")
+            raise
 
     async def receive(self, frame: tuple[int, np.ndarray]) -> None:
         sample_rate, audio = frame
