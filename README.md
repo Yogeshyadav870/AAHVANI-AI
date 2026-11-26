@@ -86,7 +86,7 @@ For the sample signals above, the BANT-inspired score is 100/100: Need 30 + Budg
 
 ## Run locally on Windows
 
-Python 3.11+ is recommended. The project has also been run locally with Python 3.13.
+Python 3.11+ is recommended. The project has also been run locally with Python 3.13. Gradio is pinned to `5.49.1` because the current FastRTC release declares compatibility with Gradio versions below 6; this keeps the text and live-voice interfaces on a compatible version.
 
 ```powershell
 git clone https://github.com/Yogeshyadav870/AAHVANI-AI.git
@@ -139,7 +139,7 @@ GEMINI_LIVE_VOICE=Kore
 
 Restart the app with `python app.py`. In the dashboard, open **Speak Up — Live Voice Mode**, allow microphone access and press the microphone control. Use headphones to reduce acoustic echo. When finished, use the existing **Schedule a product demo** panel to select a sample slot and confirm the booking.
 
-**Implementation detail:** The live connection uses the Gemini Live `v1beta` endpoint with the `gemini-3.8-live` model. Google Gen AI SDK 3.x defaults to API `v1`, so the live handler explicitly selects `v1beta` for this connection.\n\n**Privacy and cost:** Live microphone audio is sent to the Gemini Live API for processing. Usage is subject to your Google AI Studio project's quota and the current [Gemini API pricing](https://ai.google.dev/gemini-api/docs/pricing). The API key stays on the server in the local `.env` file. Do not use real customer data or recordings without consent.
+**Implementation detail:** The live connection uses the Gemini Live `v1beta` endpoint with the `gemini-3.8-live` model. Google Gen AI SDK 3.x defaults to API `v1`, so the live handler explicitly selects `v1beta` for this connection. FastRTC `0.0.34` currently requires `gradio>=4.0,<6.0`, so the project pins Gradio `5.49.1` rather than Gradio 6.\n\n**Privacy and cost:** Live microphone audio is sent to the Gemini Live API for processing. Usage is subject to your Google AI Studio project's quota and the current [Gemini API pricing](https://ai.google.dev/gemini-api/docs/pricing). The API key stays on the server in the local `.env` file. Do not use real customer data or recordings without consent.
 
 If no key is configured or live dependencies are not installed, the standard text workflow and batch voice fallback remain available.
 
