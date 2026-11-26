@@ -125,7 +125,7 @@ question. Never claim to be a human salesperson.
         model = os.getenv("GEMINI_LIVE_MODEL", DEFAULT_MODEL).strip() or DEFAULT_MODEL
         voice = os.getenv("GEMINI_LIVE_VOICE", DEFAULT_VOICE).strip() or DEFAULT_VOICE
 
-        # Gemini Live is served on v1beta; google-genai 3.x defaults to v1.
+        # Select the Gemini Live v1beta endpoint explicitly rather than relying on SDK defaults.
         self._client = genai.Client(
             api_key=api_key,
             http_options=types.HttpOptions(api_version="v1beta"),
