@@ -7,6 +7,11 @@ from crm import CRM
 from knowledge_base import KnowledgeBase
 from shopping import ShoppingAgent, ShoppingCatalogue
 
+try:
+    from live_voice import AahvaniLiveHandler
+except ImportError:
+    AahvaniLiveHandler = None
+
 
 class AgentCoreTests(unittest.TestCase):
     def setUp(self):
@@ -441,6 +446,37 @@ class DemoOrderTests(unittest.TestCase):
             product = ShoppingCatalogue().get("phone-samsung-a")
             with self.assertRaisesRegex(ValueError, "quantity"):
                 crm.create_demo_order(product=product, quantity=0)
+
+
+
+@unittest.skipIf(AahvaniLiveHandler is None, "Optional Gemini Live dependencies are not installed")
+class LiveOrderConfirmationTests(unittest.TestCase):
+    def _handler(self):
+        handler = object.__new__(AahvaniLiveHandler)
+        handler.chat_history = []
+        return handler
+
+    def test_order_requires_a_separate_assistant_confirmation_prompt(self):
+        handler = self._handler()
+        handler.chat_history = [
+            {"role": "assistant", "content": "You selected this phone. Shall I place this simulated order?"},
+            {"role": "user", "content": "yes"},
+        ]
+        self.assertTrue(handler._has_explicit_order_confirmation())
+
+    def test_order_confirmation_is_rejected_without_prompt_or_affirmative(self):
+        handler = self._handler()
+        handler.chat_history = [
+            {"role": "assistant", "content": "Here are three recommended phones."},
+            {"role": "user", "content": "yes"},
+        ]
+        self.assertFalse(handler._has_explicit_order_confirmation())
+
+        handler.chat_history = [
+            {"role": "assistant", "content": "Shall I place this simulated order?"},
+            {"role": "user", "content": "maybe later"},
+        ]
+        self.assertFalse(handler._has_explicit_order_confirmation())
 
 
 
