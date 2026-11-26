@@ -197,7 +197,7 @@ class ShoppingAgent:
     )
     NO = re.compile(r"^(?:no|nope|cancel|not now|don't place it|do not place it|nahi|nahin|abhi nahi)[.! ]*$", re.I)
     CATEGORY_SWITCH = re.compile(
-        r"\b(?:actually|instead|change to|switch to|i want (?:a|an|the)|i need (?:a|an|the)|looking for (?:a|an|the)|buy (?:a|an|the))\b",
+        r"\b(?:actually|instead|change to|switch to|what about|show me|find me|also|i want (?:a|an|the)|i need (?:a|an|the)|looking for (?:a|an|the)|looking to buy|buy (?:a|an|the))\b",
         re.I,
     )
 
