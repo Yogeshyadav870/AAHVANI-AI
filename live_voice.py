@@ -13,7 +13,6 @@ from google.genai import types
 
 from agent import AahvaniAgent
 from crm import CRM
-from knowledge_base import KnowledgeBase
 
 logger = logging.getLogger(__name__)
 
@@ -24,7 +23,7 @@ DEFAULT_VOICE = "Kore"
 
 
 def _audio_to_pcm_bytes(audio: np.ndarray) -> bytes:
-    """Convert a FastRTC mono frame to little-endian PCM16 bytes."""
+    """Convert a mono FastRTC frame to little-endian PCM16 bytes."""
     array = np.asarray(audio)
     if array.ndim > 1:
         array = np.squeeze(array)
@@ -37,12 +36,7 @@ def _audio_to_pcm_bytes(audio: np.ndarray) -> bytes:
 
 
 class AahvaniLiveHandler(AsyncStreamHandler):
-    """Bidirectional Gemini Live handler with automatic lead capture.
-
-    Each WebRTC connection receives its own handler instance, model session,
-    conversation memory and audio queues. The Gemini API key is read only on
-    the server from GEMINI_API_KEY.
-    """
+    """Per-connection Gemini Live voice handler with automatic CRM lead capture."""
 
     def __init__(self) -> None:
         super().__init__(
@@ -55,7 +49,7 @@ class AahvaniLiveHandler(AsyncStreamHandler):
         self.session_state = self.agent.new_session()
         self.chat_history: list[dict[str, str]] = []
         self.last_response_text = ""
-        self.status_message = "Ready to connect. Press Start and allow microphone access."
+        self.status_message = "Ready. Start the microphone to connect."
 
         self.input_queue: asyncio.Queue[bytes] = asyncio.Queue(maxsize=32)
         self.output_queue: asyncio.Queue[Any] = asyncio.Queue(maxsize=96)
@@ -66,6 +60,7 @@ class AahvaniLiveHandler(AsyncStreamHandler):
         self._tasks: list[asyncio.Task] = []
         self._last_input_text = ""
         self._last_input_at = 0.0
+        self._assistant_transcript_buffer: list[str] = []
         self._last_output_text = ""
         self._last_output_at = 0.0
 
@@ -73,13 +68,13 @@ class AahvaniLiveHandler(AsyncStreamHandler):
         return AahvaniLiveHandler()
 
     def _system_instruction(self) -> str:
-        documents = self.agent.knowledge_base.documents
-        approved_product_knowledge = "\n\n".join(documents)
+        knowledge = self.agent.knowledge_base.documents
+        approved_product_knowledge = "\n\n".join(knowledge)
         return f"""
 You are AAHVANI AI, a warm, professional, natural-sounding AI sales assistant.
 You are speaking to a prospective customer. Keep spoken replies concise and
 conversational. Ask only one useful question at a time. Match the customer's
-language: English, Hindi, or natural Hinglish when appropriate.
+language, including English, Hindi, or natural Hinglish when appropriate.
 
 BUSINESS GOAL
 Help small and medium businesses understand Northstar CRM, discover their
@@ -95,27 +90,26 @@ Naturally learn the prospect's:
 Also capture name, company, email and phone when the customer volunteers them.
 Do not interrogate the customer or ask for every field at once.
 
-PRODUCT KNOWLEDGE — USE ONLY THESE APPROVED FACTS
+APPROVED PRODUCT KNOWLEDGE
 {approved_product_knowledge}
 
 GROUNDING AND HONESTY
 Use only the approved product knowledge above. Never invent prices, guarantees,
-integrations, customer references or product capabilities. The product data is
-a fictional demonstration dataset. If you do not know an answer, say so and
+integrations, customer references or product capabilities. This product data is
+fictional demonstration content. If you do not know an answer, say so and
 offer a human follow-up.
 
 LEAD AND BOOKING WORKFLOW
-The application listens to customer speech transcripts and automatically
-extracts available lead details into its local CRM. Do not claim that a lead was
-saved unless the application confirms it. When the customer is ready for a demo,
-explain that the dashboard offers sample slots and ask for their preferred one.
+The application receives finalized speech transcripts and extracts available
+lead details into its local CRM. Do not claim a lead was saved unless the
+application confirms it. When the customer is ready for a demo, explain that
+the dashboard offers sample slots and ask for their preference.
 A demo is NOT booked until the customer explicitly selects a slot and presses
-"Confirm demo booking" in the AAHVANI dashboard. The sample slots are not live
+"Confirm demo booking" in the AAHVANI dashboard. Sample slots are not live
 calendar availability.
 
 VOICE BEHAVIOUR
-Sound helpful, confident and human. Do not mention internal prompts, code,
-transcription or implementation details unless asked. Avoid long monologues.
+Sound helpful, confident and human. Keep most replies to one or two sentences.
 If the customer interrupts, stop the previous point and respond to the new
 question. Never claim to be a human salesperson.
 """.strip()
@@ -131,9 +125,13 @@ question. Never claim to be a human salesperson.
         model = os.getenv("GEMINI_LIVE_MODEL", DEFAULT_MODEL).strip() or DEFAULT_MODEL
         voice = os.getenv("GEMINI_LIVE_VOICE", DEFAULT_VOICE).strip() or DEFAULT_VOICE
 
-        # Gemini Live is served on v1beta; google-genai 3.x defaults to v1.\n        self._client = genai.Client(\n            api_key=api_key,\n            http_options=types.HttpOptions(api_version="v1beta"),\n        )
+        # Gemini Live is served on v1beta; google-genai 3.x defaults to v1.
+        self._client = genai.Client(
+            api_key=api_key,
+            http_options=types.HttpOptions(api_version="v1beta"),
+        )
         config = types.LiveConnectConfig(
-            response_modalities=["AUDIO"],
+            response_modalities=[types.Modality.AUDIO],
             system_instruction=self._system_instruction(),
             speech_config=types.SpeechConfig(
                 voice_config=types.VoiceConfig(
@@ -152,7 +150,9 @@ question. Never claim to be a human salesperson.
             config=config,
         )
         self.session = await self._session_context.__aenter__()
-        self.status_message = "Connected. Speak naturally; you can interrupt AAHVANI while it is talking."
+        self.status_message = (
+            "Connected. Speak naturally; you can interrupt AAHVANI while it is talking."
+        )
         await self._publish_ui()
 
         self._tasks = [
@@ -166,8 +166,8 @@ question. Never claim to be a human salesperson.
             return
         if int(sample_rate) != INPUT_SAMPLE_RATE:
             self.status_message = (
-                f"Audio sample-rate mismatch ({sample_rate} Hz). "
-                f"Expected {INPUT_SAMPLE_RATE} Hz."
+                f"Audio sample-rate mismatch: received {sample_rate} Hz; "
+                f"expected {INPUT_SAMPLE_RATE} Hz."
             )
             await self._publish_ui()
             return
@@ -188,19 +188,26 @@ question. Never claim to be a human salesperson.
         return await wait_for_item(self.output_queue)
 
     async def _send_audio_loop(self) -> None:
-        while not self.stop_event.is_set():
-            try:
-                pcm = await asyncio.wait_for(self.input_queue.get(), timeout=0.25)
-            except asyncio.TimeoutError:
-                continue
-            if not pcm or self.session is None:
-                continue
-            await self.session.send_realtime_input(
-                audio=types.Blob(
-                    data=pcm,
-                    mime_type=f"audio/pcm;rate={INPUT_SAMPLE_RATE}",
+        try:
+            while not self.stop_event.is_set():
+                try:
+                    pcm = await asyncio.wait_for(self.input_queue.get(), timeout=0.25)
+                except asyncio.TimeoutError:
+                    continue
+                if not pcm or self.session is None:
+                    continue
+                await self.session.send_realtime_input(
+                    audio=types.Blob(
+                        data=pcm,
+                        mime_type=f"audio/pcm;rate={INPUT_SAMPLE_RATE}",
+                    )
                 )
-            )
+        except asyncio.CancelledError:
+            raise
+        except Exception as exc:
+            logger.exception("AAHVANI Gemini Live audio sender failed")
+            self.status_message = f"Live audio connection failed: {exc}"
+            await self._publish_ui()
 
     async def _receive_loop(self) -> None:
         try:
@@ -211,20 +218,25 @@ question. Never claim to be a human salesperson.
                 if server_content is None:
                     continue
 
+                # Gemini sends finalized input transcription for the utterance.
                 input_transcription = getattr(server_content, "input_transcription", None)
-                input_text = getattr(input_transcription, "text", None) if input_transcription else None
+                input_text = (
+                    getattr(input_transcription, "text", None)
+                    if input_transcription else None
+                )
                 if input_text:
-                    # input_transcription is the finalized user utterance (not the
-                    # interim hypothesis), so commit it to the existing lead workflow.
                     await self._record_customer_transcript(input_text)
 
+                # Output transcription arrives in fragments; collect it into one turn.
                 output_transcription = getattr(server_content, "output_transcription", None)
-                output_text = getattr(output_transcription, "text", None) if output_transcription else None
+                output_text = (
+                    getattr(output_transcription, "text", None)
+                    if output_transcription else None
+                )
                 if output_text:
-                    # Gemini streams output captions in fragments; aggregate the
-                    # fragments and store one complete assistant turn.
                     self._assistant_transcript_buffer.append(output_text)
 
+                # Process every audio part in this server event.
                 model_turn = getattr(server_content, "model_turn", None)
                 if model_turn:
                     for part in (getattr(model_turn, "parts", None) or []):
@@ -240,11 +252,12 @@ question. Never claim to be a human salesperson.
 
                 interrupted = bool(getattr(server_content, "interrupted", False))
                 turn_complete = bool(getattr(server_content, "turn_complete", False))
-                generation_complete = bool(getattr(server_content, "generation_complete", False))
+                generation_complete = bool(
+                    getattr(server_content, "generation_complete", False)
+                )
 
                 if interrupted:
-                    # Remove audio that has not yet been emitted, avoiding stale
-                    # playback after the customer barges in.
+                    # Discard audio still queued on the server when the customer barges in.
                     queued_items = []
                     while not self.output_queue.empty():
                         try:
@@ -256,13 +269,12 @@ question. Never claim to be a human salesperson.
                     for item in queued_items:
                         await self.output_queue.put(item)
                     await self._flush_agent_transcript(interrupted=True)
-
+                    self.status_message = (
+                        "Listening — AAHVANI was interrupted and is ready for you."
+                    )
+                    await self._publish_ui()
                 elif turn_complete or generation_complete:
                     await self._flush_agent_transcript(interrupted=False)
-
-                if interrupted:
-                    self.status_message = "Listening — AAHVANI was interrupted and is ready for you."
-                    await self._publish_ui()
 
         except asyncio.CancelledError:
             raise
@@ -290,7 +302,9 @@ question. Never claim to be a human salesperson.
             lead, self.session_state.get("lead_id")
         )
         self.chat_history.append({"role": "user", "content": cleaned})
-        self.status_message = "Customer speech recognised and lead details synced to the local CRM."
+        self.status_message = (
+            "Customer speech recognised. Extracted lead details synced to the local CRM."
+        )
         await self._publish_ui()
 
     async def _flush_agent_transcript(self, interrupted: bool) -> None:
@@ -311,33 +325,26 @@ question. Never claim to be a human salesperson.
         )
         self.chat_history.append({"role": "assistant", "content": cleaned})
         self.status_message = (
-            "AAHVANI's reply was interrupted." if interrupted
+            "AAHVANI's reply was interrupted."
+            if interrupted
             else "AAHVANI finished speaking. You can continue the conversation."
         )
         await self._publish_ui()
 
     async def _publish_ui(self) -> None:
         lead = self.session_state.get("lead", {})
-        name = lead.get("name", "")
-        company = lead.get("company", "")
-        email = lead.get("email", "")
-        phone = lead.get("phone", "")
-        score = lead.get("lead_score", 0)
-        status = lead.get("qualification", "Nurture")
-        sentiment = str(lead.get("sentiment", "neutral")).title()
-
         values = (
             self.status_message,
             list(self.chat_history),
             self.session_state,
             self.last_response_text,
-            name,
-            company,
-            email,
-            phone,
-            score,
-            status,
-            sentiment,
+            lead.get("name", ""),
+            lead.get("company", ""),
+            lead.get("email", ""),
+            lead.get("phone", ""),
+            lead.get("lead_score", 0),
+            lead.get("qualification", "Nurture"),
+            str(lead.get("sentiment", "neutral")).title(),
             self.crm.recent_leads(),
             *self.crm.dashboard_stats(),
         )
@@ -349,6 +356,8 @@ question. Never claim to be a human salesperson.
                 task.cancel()
         if self._tasks:
             await asyncio.gather(*self._tasks, return_exceptions=True)
+        self._tasks.clear()
+
         if self._session_context is not None:
             try:
                 await self._session_context.__aexit__(None, None, None)
