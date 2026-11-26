@@ -101,13 +101,13 @@ Edit .env locally and set:
 
 ~~~dotenv
 GEMINI_API_KEY=your_google_ai_studio_key
-GEMINI_LIVE_MODEL=gemini-3.8-live
+GEMINI_LIVE_MODEL=gemini-3.1-flash-live-preview
 GEMINI_LIVE_VOICE=Kore
 ~~~
 
 Create a key in [Google AI Studio](https://aistudio.google.com/app/apikey). Keep it only in the local .env file; never commit it or paste it into browser-side code.
 
-Restart with python app.py. In the dashboard, start the Live conversation using the integrated microphone control. AAHVANI greets the customer; then the same input area accepts either typed messages or speech. Both methods use the same Gemini Live session and conversation history. Use headphones to reduce acoustic echo.
+Restart with python app.py. The dashboard provides two explicit conversation modes. **Text Chat** uses the deterministic local shopping workflow and remains available even when Live Voice is disconnected. **Live Speaking** uses the microphone and Gemini Live for spoken conversation; its transcript appears in the Live Speaking chat history, and Gemini's audio reply plays automatically. The speaker mute control is hidden to keep the microphone interaction simple. Use headphones to reduce acoustic echo.
 
 ### Text-only fallback
 
