@@ -263,7 +263,9 @@ class ShoppingAgent:
         if shopping.get("awaiting_confirmation"):
             if self.YES.fullmatch(lower):
                 session["demo_order_to_create"] = {
-                    "product": dict(shopping["selected_product"]), "quantity": 1
+                    "product": dict(shopping["selected_product"]),
+                    "quantity": 1,
+                    "idempotency_key": f"{session.get('session_id', 'shopping')}:{uuid.uuid4()}",
                 }
                 shopping["awaiting_confirmation"] = False
                 reply = "Great. I'm placing your simulated order now. No payment will be taken."
