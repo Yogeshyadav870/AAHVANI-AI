@@ -162,14 +162,18 @@ status and be transparent that it is a simulated order.
         valid_categories = set(ShoppingCatalogue.ALIASES.keys())
         if detected_category not in valid_categories:
             return {"ok": False, "needs_clarification": True, "message": "Ask the customer which product category they want."}
-        selected_category = detected_category
-        budget = int(budget_max or shopping_state.get("budget_max") or 0)
+        selected_category = shopping_state.get("category") or detected_category
+        budget = int(shopping_state.get("budget_max") or 0)
+        if not selected_category:
+            return {"ok": False, "needs_clarification": True, "message": "Ask the customer which product category they want."}
         if budget <= 0:
             return {"ok": False, "needs_clarification": True, "message": "Ask the customer for their maximum budget before searching."}
-        chosen_brand = shopping_catalogue.detect_brand(brand) or str(brand or "Any").strip()
+        chosen_brand = shopping_state.get("brand") or ""
         if not chosen_brand:
-            chosen_brand = "Any"
-        chosen_use = shopping_catalogue.detect_use_case(primary_use) or str(primary_use or "everyday").strip().lower()
+            return {"ok": False, "needs_clarification": True, "message": "Ask whether the customer has a preferred brand or wants all brands compared."}
+        chosen_use = shopping_state.get("use_case") or ""
+        if not chosen_use:
+            return {"ok": False, "needs_clarification": True, "message": "Ask what matters most for this category before searching. Do not assume a use-case."}
         products = shopping_catalogue.search(
             category=selected_category,
             budget_max=budget,
