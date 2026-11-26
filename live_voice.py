@@ -114,10 +114,12 @@ class AahvaniLiveHandler(AsyncStreamHandler):
         knowledge = self.agent.knowledge_base.documents
         approved_product_knowledge = "\n\n".join(knowledge)
         return f"""
-You are AAHVANI AI, a warm, professional, natural-sounding AI sales assistant.
-You are speaking to a prospective customer. Keep spoken replies concise and
-conversational. Ask only one useful question at a time. Match the customer's
-language, including English, Hindi, or natural Hinglish when appropriate.
+You are AAHVANI AI, a warm, professional, natural-sounding AI appointment assistant for Jalandhar.
+You help customers request appointments across service categories such as healthcare,
+salons, vehicle services, professional consultations, fitness, education and other
+local services. Keep spoken replies concise and conversational. Ask one useful
+question at a time. Match the customer's language, including English, Hindi, or
+natural Hinglish when appropriate.
 
 BRAND NAME PRONUNCIATION — IMPORTANT
 The brand name AAHVANI is pronounced "AAH-vuh-nee" (आह्वनी), followed by
@@ -132,43 +134,46 @@ At the start of every new live session, your first spoken sentence must be:
 Pronounce AAH-vuh-nee as three syllables: AAH / vuh / nee (आह्वनी).
 Do not add a long introduction. After this one sentence, stop and listen.
 
-BUSINESS GOAL
-Help small and medium businesses understand Northstar CRM, discover their
-sales and customer-management needs, qualify the prospect, and guide them to
-a product demonstration.
+PRIMARY TASK — APPOINTMENT REQUESTS
+Help the customer request an appointment in Jalandhar. Support a broad range of
+service categories: healthcare, dental, salon/spa, vehicle service, legal or
+professional consultation, fitness, education and other services.
+Do not assume the request is for Northstar CRM. First understand what service
+the customer wants and acknowledge it naturally.
 
-DISCOVERY AND CONVERSATION STATE
-Run a natural, consultative sales conversation. Keep track of information the
-customer has already shared and NEVER ask for the same field again.
-Collect only missing details, one question at a time, in this order:
-1. Need — what they want the CRM to help their company manage or improve.
-2. Budget — an approximate range or whether the budget is flexible.
-3. Authority — whether they make the final decision or need approval.
-4. Timeline — when they want to start using the CRM.
-5. Contact — an email address or phone number for demo follow-up.
-Skip any item already answered by the customer.
+APPOINTMENT DETAILS
+Collect only the missing details, one question at a time:
+1. Service category and exact service/appointment type.
+2. Provider or business name, if the customer has selected one. If not selected,
+   record "Provider to be selected"; do not invent providers.
+3. City/area. Default to Jalandhar when the customer has not specified another city.
+4. Preferred date and time.
+5. Customer name.
+6. A phone number or email address for provider follow-up.
+7. Any short notes or special requirements.
+Remember details already given in the conversation and never ask for them again.
+A vague preference such as "tomorrow morning" must be clarified to a specific
+date and time before saving the request. Do not invent provider availability.
 
-Treat statements such as "I need a CRM", "I want to store company data",
-or "we need to manage customer records" as buying requirements. Acknowledge
-the need and continue with the next missing discovery question. Do not mistake
-these statements for product-information questions just because they contain
-words that also appear in the knowledge base.
+BOOKING CONFIRMATION AND TOOL USE
+A server-side tool named save_appointment_request is available. It saves an
+appointment request and the customer details into the local AAHVANI CRM.
+Never call it until all required details are collected and you have read back
+the service, provider (or provider-to-be-selected), city, date, time and contact
+to the customer, then the customer explicitly confirms (for example, "yes, book
+it" or "go ahead"). A bare request to find or discuss an appointment is not
+confirmation to submit it.
+After the tool succeeds, clearly say the request was saved and give the request
+reference. Its initial status is "Pending provider confirmation". Do NOT say
+the external appointment is confirmed or booked. A real provider/calendar
+integration must confirm availability before that status can become Confirmed.
+If the tool rejects the request because details or confirmation are missing,
+ask only for the missing information or confirmation.
 
-Interpret short replies using the immediately preceding question. For example,
-"yes" after asking whether the customer makes the final decision means they
-are the decision maker; "no" means someone else must approve. If the customer
-says only "yes" after a budget question, clarify whether the budget is flexible
-or ask for an approximate range. If they say the budget is flexible, record it
-and move on. Never repeat a question whose answer is already known.
-
-PRODUCT QUESTIONS
-Answer product questions only when the customer explicitly asks about a
-feature, capability, integration, pricing, security or another product detail.
-Answer in one or two concise spoken sentences using only the relevant approved
-knowledge. Paraphrase naturally: NEVER read Markdown headings, recite the
-whole knowledge-base section, or dump a long list. After answering, return to
-the next missing discovery question. Do not make up unsupported capabilities
-or pricing.
+EXISTING CRM DEMO
+If a customer explicitly asks about Northstar CRM, answer using the approved
+product knowledge below. The Northstar CRM demo remains fictional sample data.
+Do not turn ordinary appointment requests into a CRM product pitch.
 
 APPROVED PRODUCT KNOWLEDGE
 {approved_product_knowledge}
@@ -193,6 +198,214 @@ Sound helpful, confident and human. Keep most replies to one or two sentences.
 If the customer interrupts, stop the previous point and respond to the new
 question. Never claim to be a human salesperson.
 """.strip()
+
+    @staticmethod
+    def _appointment_request_tool():
+        return types.FunctionDeclaration(
+            name="save_appointment_request",
+            description=(
+                "Save a customer-confirmed local service appointment request into the "
+                "AAHVANI SQLite CRM. Call only after every required field is collected, "
+                "the assistant has read the details back, and the customer explicitly "
+                "confirmed. This creates a request pending provider confirmation; it "
+                "does not reserve an external provider calendar slot."
+            ),
+            parameters_json_schema={
+                "type": "object",
+                "properties": {
+                    "service_category": {
+                        "type": "string",
+                        "description": "Service category, e.g. healthcare, salon, vehicle service, legal, fitness or education.",
+                    },
+                    "service_name": {
+                        "type": "string",
+                        "description": "Specific service or appointment type requested.",
+                    },
+                    "provider_name": {
+                        "type": "string",
+                        "description": "Chosen clinic, business or professional; use Provider to be selected if the customer has no preference.",
+                    },
+                    "city": {
+                        "type": "string",
+                        "description": "Appointment city. Use Jalandhar when the customer has not specified another city.",
+                    },
+                    "preferred_date": {
+                        "type": "string",
+                        "description": "Specific calendar date confirmed by the customer, preferably YYYY-MM-DD.",
+                    },
+                    "preferred_time": {
+                        "type": "string",
+                        "description": "Specific preferred local appointment time, e.g. 11:30 AM.",
+                    },
+                    "customer_name": {
+                        "type": "string",
+                        "description": "Customer's name.",
+                    },
+                    "customer_phone": {
+                        "type": "string",
+                        "description": "Customer phone number, if provided.",
+                    },
+                    "customer_email": {
+                        "type": "string",
+                        "description": "Customer email address, if provided.",
+                    },
+                    "notes": {
+                        "type": "string",
+                        "description": "Optional reason for visit or special requirements.",
+                    },
+                },
+                "required": [
+                    "service_category",
+                    "service_name",
+                    "city",
+                    "preferred_date",
+                    "preferred_time",
+                    "customer_name",
+                ],
+            },
+        )
+
+    def _has_explicit_appointment_confirmation(self) -> bool:
+        last_user = ""
+        last_assistant = ""
+        for item in reversed(self.chat_history):
+            role = item.get("role")
+            if role == "user" and not last_user:
+                last_user = str(item.get("content", "")).strip().lower()
+            elif role == "assistant" and not last_assistant:
+                last_assistant = str(item.get("content", "")).strip().lower()
+            if last_user and last_assistant:
+                break
+
+        assistant_requested_confirmation = any(
+            phrase in last_assistant
+            for phrase in (
+                "shall i submit",
+                "should i submit",
+                "would you like me to submit",
+                "shall i save",
+                "should i save",
+                "please confirm",
+                "is that correct",
+                "would you like me to book",
+                "shall i place",
+            )
+        )
+        customer_confirmed = bool(re.fullmatch(
+            r"(?:yes|yeah|yep|sure|please do|go ahead|confirm|confirmed|"
+            r"book it|submit it|do it|that's correct|that is correct|"
+            r"yes please|yes book it|please book it)[.! ]*",
+            last_user,
+        ))
+        return assistant_requested_confirmation and customer_confirmed
+
+    async def _execute_live_tool_call(self, tool_call) -> None:
+        function_responses = []
+        for function_call in (getattr(tool_call, "function_calls", None) or []):
+            name = str(getattr(function_call, "name", "") or "")
+            call_id = getattr(function_call, "id", None)
+            args = getattr(function_call, "args", None) or {}
+            if not isinstance(args, dict):
+                args = {}
+
+            if name != "save_appointment_request":
+                result = {"ok": False, "error": f"Unsupported function: {name}"}
+            elif not self._has_explicit_appointment_confirmation():
+                result = {
+                    "ok": False,
+                    "needs_confirmation": True,
+                    "error": (
+                        "The customer has not explicitly confirmed the read-back. "
+                        "Do not save yet. Read back the details and ask the customer "
+                        "to say yes, confirm, or go ahead."
+                    ),
+                }
+            else:
+                try:
+                    lead = self.session_state.setdefault("lead", {})
+                    customer_name = str(args.get("customer_name") or lead.get("name") or "").strip()
+                    customer_phone = str(args.get("customer_phone") or lead.get("phone") or "").strip()
+                    customer_email = str(args.get("customer_email") or lead.get("email") or "").strip()
+                    service_category = str(args.get("service_category") or "").strip()
+                    service_name = str(args.get("service_name") or "").strip()
+                    city = str(args.get("city") or "Jalandhar").strip()
+                    provider_name = str(args.get("provider_name") or "").strip()
+
+                    if not lead.get("name"):
+                        lead["name"] = customer_name
+                    if not lead.get("phone"):
+                        lead["phone"] = customer_phone
+                    if not lead.get("email"):
+                        lead["email"] = customer_email
+                    lead["need"] = f"{service_category}: {service_name}".strip(": ")
+                    lead["lead_score"], lead["qualification"] = self.agent._score(lead)
+                    self.session_state["lead_id"] = self.crm.save_lead(
+                        lead, self.session_state.get("lead_id")
+                    )
+
+                    record = self.crm.create_service_appointment_request(
+                        lead_id=self.session_state["lead_id"],
+                        service_category=service_category,
+                        service_name=service_name,
+                        provider_name=provider_name,
+                        city=city,
+                        preferred_date=str(args.get("preferred_date") or "").strip(),
+                        preferred_time=str(args.get("preferred_time") or "").strip(),
+                        customer_name=customer_name,
+                        customer_phone=customer_phone,
+                        customer_email=customer_email,
+                        notes=str(args.get("notes") or "").strip(),
+                        source="Gemini Live Voice",
+                    )
+                    self.session_state.setdefault("appointments", []).append({
+                        "appointment_id": record["id"],
+                        "service_category": record["service_category"],
+                        "service_name": record["service_name"],
+                        "provider_name": record["provider_name"],
+                        "city": record["city"],
+                        "preferred_date": record["preferred_date"],
+                        "preferred_time": record["preferred_time"],
+                        "status": record["status"],
+                    })
+                    result = {
+                        "ok": True,
+                        "appointment_id": record["id"],
+                        "request_reference": record["id"][:8].upper(),
+                        "service": record["service_name"],
+                        "provider": record["provider_name"],
+                        "city": record["city"],
+                        "preferred_date": record["preferred_date"],
+                        "preferred_time": record["preferred_time"],
+                        "status": record["status"],
+                        "provider_confirmed": False,
+                        "message": (
+                            "Appointment request successfully saved in the AAHVANI CRM. "
+                            "It is pending provider confirmation; no external calendar has "
+                            "been reserved."
+                        ),
+                        "duplicate_prevented": bool(record.get("duplicate_prevented", False)),
+                    }
+                    self.status_message = (
+                        f"Appointment request {result['request_reference']} saved to CRM — "
+                        "pending provider confirmation."
+                    )
+                    await self._publish_ui()
+                except (KeyError, TypeError, ValueError) as exc:
+                    result = {"ok": False, "error": str(exc)}
+                except Exception as exc:
+                    logger.exception("Could not save the appointment request")
+                    result = {"ok": False, "error": f"CRM save failed: {type(exc).__name__}: {exc}"}
+
+            function_responses.append(
+                types.FunctionResponse(
+                    id=call_id,
+                    name=name,
+                    response=result,
+                )
+            )
+
+        if function_responses:
+            await self.session.send_tool_response(function_responses=function_responses)
 
     async def start_up(self) -> None:
         self._loop = asyncio.get_running_loop()
@@ -228,6 +441,7 @@ question. Never claim to be a human salesperson.
                 ),
                 input_audio_transcription=types.AudioTranscriptionConfig(),
                 output_audio_transcription=types.AudioTranscriptionConfig(),
+                tools=[types.Tool(function_declarations=[self._appointment_request_tool()])],
             )
 
             # Gemini 3.8 Live has recently shown intermittent realtime-audio
@@ -382,6 +596,11 @@ question. Never claim to be a human salesperson.
             async for response in self.session.receive():
                 if self.stop_event.is_set():
                     break
+                tool_call = getattr(response, "tool_call", None)
+                if tool_call is not None:
+                    await self._execute_live_tool_call(tool_call)
+                    continue
+
                 server_content = getattr(response, "server_content", None)
                 if server_content is None:
                     continue
@@ -568,6 +787,7 @@ question. Never claim to be a human salesperson.
             str(lead.get("sentiment", "neutral")).title(),
             self.crm.recent_leads(),
             *self.crm.dashboard_stats(),
+            self.crm.recent_service_appointments(),
         )
         await self.output_queue.put(AdditionalOutputs(*values))
 
