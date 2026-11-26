@@ -7,7 +7,7 @@
 - Interactive Gradio customer conversation interface.
 - Session-level conversational memory.
 - Local FAQ retrieval using a lightweight TF-IDF-style lexical scoring baseline.
-- Optional Gemini response generation (`GEMINI_API_KEY`); deterministic local fallback when no key is configured or the API is unavailable.
+- Optional Gemini response generation; deterministic local fallback when no key is configured or the API is unavailable.
 - BANT-inspired lead qualification with a transparent 0–100 heuristic score.
 - Basic keyword-based sentiment signal.
 - SQLite CRM persistence for leads and sample demo appointments.
@@ -19,41 +19,40 @@
 
 The agent demonstrates a fictional product called **Northstar CRM**. The FAQ does not contain approved commercial pricing, and the agent is instructed not to invent prices. Sample slots are local demo entries, not actual calendar availability. The project does not connect to an external CRM or telephony provider.
 
-## Run locally
+## Run on Windows
 
-Python 3.10 or newer is recommended.
-
-```bash
-python -m venv .venv
-```
-
-Activate the virtual environment:
+Python 3.11 or 3.12 is recommended for this evaluation setup. The base demo does not require a Gemini API key or voice dependencies.
 
 ```powershell
-# Windows PowerShell
-.venv\Scripts\Activate.ps1
-```
+git clone https://github.com/Yogeshyadav870/AAHVANI-AI.git
+cd AAHVANI-AI
 
-```bash
-# macOS / Linux
-source .venv/bin/activate
-```
+py -3.11 -m venv .venv
+.venv\Scripts\activate
 
-Install and start:
-
-```bash
-pip install -r requirements.txt
-# Copy .env.example to .env; Gemini API key is optional.
+python -m pip install --upgrade pip
+python -m pip install -r requirements.txt
+python -m unittest discover -s tests -v
 python app.py
 ```
 
-Open the local Gradio URL printed in the terminal. To enable optional speech input/output:
+Open the local Gradio URL printed in the terminal. For macOS/Linux, create and activate a virtual environment with `python3 -m venv .venv` and `source .venv/bin/activate`, then install the same requirements.
+
+### Optional features — do not install for the basic demo
+
+Gemini-powered responses (requires a Gemini API key):
+
+```bash
+pip install -r requirements-gemini.txt
+```
+
+Voice input/output (speech recognition may download a model on first use; Edge TTS requires internet):
 
 ```bash
 pip install -r requirements-voice.txt
 ```
 
-The first Faster-Whisper run may download the selected speech model. Edge TTS requires internet. The application runs with `share=False` and binds to `127.0.0.1` by default.
+Copy `.env.example` to `.env` only if configuring optional settings. Never commit API keys.
 
 ## Suggested live demo
 
@@ -80,6 +79,7 @@ AAHVANI-AI/
 ├── project_report.md
 ├── DEMO_WALKTHROUGH.md
 ├── requirements.txt
+├── requirements-gemini.txt
 ├── requirements-voice.txt
 └── .env.example
 ```
