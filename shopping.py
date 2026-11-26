@@ -95,6 +95,9 @@ class ShoppingCatalogue:
                 value = int(round(amount * multipliers.get(unit, 1)))
                 if value >= 1_000:
                     return value
+        bare = re.search(r"\b(?:budget\s*(?:is|of)?\s*)?(\d{4,8})\b", raw)
+        if bare:
+            return int(bare.group(1))
         return None
 
     @classmethod
@@ -210,6 +213,18 @@ class ShoppingAgent:
             if product["id"].lower() in lower or product["title"].lower() in lower:
                 return product
         return None
+
+    @staticmethod
+    def format_order_confirmation(order: dict[str, Any]) -> str:
+        return (
+            "## ✅ Demo order placed successfully!\n\n"
+            f"**Order ID:** {order['order_ref']}\n\n"
+            f"**Product:** {order['product_title']}\n\n"
+            f"**Quantity:** {order['quantity']}\n\n"
+            f"**Total:** ₹{int(order['total_price']):,}\n\n"
+            f"**Status:** {order['status']}\n\n"
+            "This is a simulated order. No payment was collected and no real shipment was created."
+        )
 
     def respond(self, user_text: str, session: dict[str, Any] | None = None) -> tuple[str, dict[str, Any]]:
         session = session or self.new_session()
