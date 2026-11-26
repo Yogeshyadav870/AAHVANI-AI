@@ -706,14 +706,14 @@ question. Never claim to be a human salesperson.
                         self._assistant_is_speaking = False
                         await self._flush_agent_transcript(interrupted=True)
                         self.status_message = (
-                            "🎤 Your turn — AAHVANI is listening. Speak or type below."
+                            "🎤 Your turn — AAHVANI is listening. Speak naturally."
                         )
                         await self._publish_ui()
                     elif turn_complete or generation_complete:
                         self._assistant_is_speaking = False
                         await self._flush_agent_transcript(interrupted=False)
                         self.status_message = (
-                            "🎤 Your turn — speak now or type a message below."
+                            "🎤 Your turn — speak now."
                         )
                         await self._publish_ui()
 
