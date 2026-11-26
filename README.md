@@ -1,11 +1,11 @@
 <div align="center">
   <img src="assets/aahvani_logo.svg" alt="AAHVANI AI headset and waveform logo" width="130"/>
   <h1>AAHVANI AI</h1>
-  <p><strong>Autonomous AI Sales Voice Agent</strong></p>
+  <p><strong>Voice-First AI Assistant for Sales & Service Appointments</strong></p>
   <p>Intelligence that speaks. Conversations that convert.</p>
 </div>
 
-AAHVANI AI is an evaluation-ready MVP for an AI sales sales assistant. It supports contextual text conversations, an optional real-time browser voice mode, product knowledge, lead capture and qualification, sample demo booking, CRM persistence and call summaries.
+AAHVANI AI is a voice-first conversational assistant with a local CRM. It supports contextual text conversations, optional real-time Gemini Live voice, sales lead capture and qualification, and voice-led service appointment requests for Jalandhar across categories such as healthcare, salons, vehicle services, professional consultations, fitness and education.
 
 > **Round 3 project:** Advanced AI Project Challenge & Technical Discussion — FORTIVEX AI PRIVATE LIMITED.
 
@@ -43,6 +43,8 @@ The product used for the demonstration, **Northstar CRM**, is fictional sample d
 | Product knowledge | Local Markdown FAQ with custom TF-IDF-style lexical ranking | Implemented |
 | Response generation | Deterministic local text-chat fallback; optional Gemini text generation | Implemented / optional |
 | Live voice conversation | Bidirectional WebRTC audio streaming to Gemini Live with native speech responses and interruption support | Optional; requires API key and live dependencies |
+| Gemini Live appointment function calling | Gemini collects appointment details, reads them back, waits for explicit customer confirmation and calls a server-side Python tool | Optional; requires live mode and API key |
+| Service appointment CRM | Stores service category, provider, city, requested date/time, customer contact, status and request reference in SQLite | Implemented; requests start Pending provider confirmation |
 | Voice transcript and CRM sync | Gemini Live input/output transcription; customer transcript feeds existing lead extraction and SQLite | Optional; requires live mode |
 | Lead qualification | BANT-inspired, transparent 0–100 heuristic | Implemented |
 | Sentiment | Positive/negative keyword-count baseline | Implemented |
@@ -55,7 +57,9 @@ The product used for the demonstration, **Northstar CRM**, is fictional sample d
 | Multilingual experience | Whisper is multilingual-capable, but end-to-end multilingual UX and output voices are not validated in this MVP | Partial / future work |
 | External calendar / CRM | No live third-party integration | Future work |
 
-**Accuracy about the current demo:** Text chat continues to use the deterministic local fallback unless `GEMINI_API_KEY` is configured for optional Gemini text generation. Live Voice Mode also uses `GEMINI_API_KEY`, but connects to the configurable `GEMINI_LIVE_MODEL` (default `gemini-3.8-live`) and sends microphone audio to Google's cloud service. The FastRTC/WebRTC transport is browser-to-server; the API key remains on the Python server. The older Faster-Whisper + Edge TTS path remains available as a separate fallback. This project does not provide a live phone number, real calendar availability or PSTN telephony.
+**Accuracy about appointment booking:** Gemini Live uses function calling to invoke a Python server-side tool. After the customer provides the service, date/time and contact details, AAHVANI reads the request back and waits for an explicit yes/confirmation before saving it in the `service_appointments` SQLite table. The saved status is **Pending provider confirmation**. This version does not yet have a live Jalandhar provider directory or external provider/calendar APIs, so it records a booking request rather than claiming that a real provider slot is confirmed. The CRM dashboard lets an operator update the status after receiving confirmation from the provider.
+
+**Accuracy about the current demo:** Text chat continues to use the deterministic local fallback unless `GEMINI_API_KEY` is configured for optional Gemini text generation. Live Voice Mode also uses `GEMINI_API_KEY`, connects to the configurable `GEMINI_LIVE_MODEL`, and sends microphone audio to Google's cloud service. The FastRTC/WebRTC transport is browser-to-server; the API key remains on the Python server. The older Faster-Whisper + Edge TTS path remains available as a separate fallback. This project does not provide a live phone number or PSTN telephony.
 
 ## End-to-end demonstration
 
@@ -138,7 +142,9 @@ GEMINI_LIVE_MODEL=gemini-3.8-live
 GEMINI_LIVE_VOICE=Kore
 ```
 
-Restart the app with `python app.py`. In the dashboard, open **Speak Up — Live Voice Mode**, allow microphone access and click the microphone icon. AAHVANI will greet you automatically. You can then speak or type in the built-in input and press Enter. The microphone icon mutes/unmutes your microphone, the speaker icon mutes/unmutes AAHVANI, and the square icon ends the session. The status line indicates when AAHVANI is speaking and when it is your turn. Use headphones to reduce acoustic echo. When finished, use the existing **Schedule a product demo** panel to select a sample slot and confirm the booking.
+Restart the app with `python app.py`. In the dashboard, open **Speak Up — Live Voice Mode**, allow microphone access and click the microphone icon. AAHVANI will greet you automatically. You can then speak or type in the built-in input and press Enter. The microphone icon mutes/unmutes your microphone, the speaker icon mutes/unmutes AAHVANI, and the square icon ends the session. The status line indicates when AAHVANI is speaking and when it is your turn. Use headphones to reduce acoustic echo.
+
+For a local service appointment, tell AAHVANI what you need (for example, a dental consultation in Jalandhar). It collects the provider preference, requested date/time, customer name and a phone/email, reads the details back, and asks for explicit confirmation. Gemini then calls the server-side `save_appointment_request` function. The request appears in **Jalandhar service appointment requests** in the CRM dashboard with status **Pending provider confirmation**. Do not describe this as a confirmed external booking until the provider confirms it and an operator updates the CRM status with a confirmation note/reference.
 
 **Implementation detail:** The live connection explicitly selects the Gemini Live `v1beta` endpoint with the `gemini-3.8-live` model. The optional voice and Gemini text dependencies are pinned to `google-genai==2.0.0` alongside `gradio==5.49.1` and `fastrtc==0.0.34`. This combination keeps their Pydantic dependency ranges compatible while retaining the Live API and transcription configuration used by this prototype. FastRTC `0.0.34` currently requires `gradio>=4.0,<6.0`, so the project pins Gradio `5.49.1` rather than Gradio 6.\n\n**Privacy and cost:** Live microphone audio is sent to the Gemini Live API for processing. Usage is subject to your Google AI Studio project's quota and the current [Gemini API pricing](https://ai.google.dev/gemini-api/docs/pricing). The API key stays on the server in the local `.env` file. Do not use real customer data or recordings without consent.
 
@@ -179,7 +185,9 @@ Production controls would include TLS, encryption at rest, tenant isolation, aut
 ## Known limitations and next steps
 
 - No PSTN telephony, phone number or call transfer; Live Voice Mode is browser-based WebRTC.
-- No external CRM or real calendar integration.
+- No live Jalandhar provider directory or provider/calendar booking API yet; Gemini saves appointment requests as pending until provider confirmation.
+- The local appointment CRM is available, but provider matching, live availability checks, automated provider notifications and online provider confirmation are future integrations.
+- No external CRM integration.
 - Retrieval is lexical and based on a small local FAQ, not vector embeddings.
 - Gemini is optional and not active in the default demo.
 - Lead scoring and sentiment are rule/keyword baselines.
