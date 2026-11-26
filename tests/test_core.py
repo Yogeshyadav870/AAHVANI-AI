@@ -324,6 +324,11 @@ class ShoppingAgentTests(unittest.TestCase):
         self.assertEqual(self.catalogue.detect_category("Suggest a gaming laptop"), "laptop")
         self.assertEqual(self.catalogue.detect_category("Need wireless headphones"), "headphones")
         self.assertEqual(self.catalogue.detect_category("Looking for a smartwatch"), "smartwatch")
+        self.assertEqual(self.catalogue.detect_category("I need a 43 inch smart TV"), "television")
+        self.assertEqual(self.catalogue.detect_category("Need a printer for home"), "printer")
+        self.assertEqual(self.catalogue.detect_category("Suggest running shoes"), "footwear")
+        self.assertEqual(self.catalogue.detect_category("I need a travel backpack"), "backpack")
+        self.assertEqual(self.catalogue.detect_category("Need an ergonomic office chair"), "furniture")
 
     def test_product_name_does_not_trigger_creative_use_case(self):
         self.assertEqual(self.catalogue.detect_use_case("I need a smartphone under 15000"), "")
@@ -388,7 +393,7 @@ class ShoppingAgentTests(unittest.TestCase):
         self.assertIn("shall i place", reply.lower())
         self.assertNotIn("demo_order_to_create", session)
 
-        reply, session = self.agent.respond("yes", session)
+        reply, session = self.agent.respond("haan kar do", session)
         self.assertIn("simulated order", reply.lower())
         self.assertIn("demo_order_to_create", session)
         self.assertEqual(
