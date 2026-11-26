@@ -106,6 +106,12 @@ class AgentCoreTests(unittest.TestCase):
             "Decision maker",
         )
 
+    def test_job_title_is_not_saved_as_customer_name(self):
+        lead = self.session["lead"]
+        self.agent._extract_facts("I m the CEO of my company", lead)
+        self.assertEqual(lead["name"], "")
+        self.assertEqual(lead["authority"], "Decision maker")
+
     def test_yes_i_will_advances_past_authority_question(self):
         _, session = self.agent.respond("Hello", self.session)
         _, session = self.agent.respond(
