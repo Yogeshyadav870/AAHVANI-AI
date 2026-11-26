@@ -25,7 +25,7 @@ AAHVANI AI is a voice-and-text shopping assistant built around one shared conver
 | Capability | Current implementation |
 |---|---|
 | Unified chat | One Gradio conversation area; in Live mode its integrated composer accepts typed text and microphone audio in the same session |
-| Product categories | Smartphones, laptops, headphones, tablets, smartwatches, monitors, cameras, home appliances, speakers and gaming consoles |
+| Product categories | Smartphones, laptops, headphones, tablets, smartwatches, monitors, cameras, home appliances, speakers, gaming consoles, televisions, printers, footwear, backpacks and furniture |
 | Preference gathering | Category-aware prompts for budget, primary use and brand preference |
 | Product retrieval | Python filters and ranks a curated local JSON catalogue and returns up to three matching products |
 | Product selection | Customer can say or type option 1, 2 or 3; Gemini Live also has a server-side selection tool |
