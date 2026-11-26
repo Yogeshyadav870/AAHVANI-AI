@@ -89,7 +89,7 @@ def shopping_chat(message, history, session):
                 product=product,
                 quantity=int(order_request.get("quantity") or 1),
                 customer_name="",
-                idempotency_key=f"{session['session_id']}:{product['id']}",
+                idempotency_key=order_request.get("idempotency_key") or f"{session['session_id']}:{uuid.uuid4()}",
             )
             session.setdefault("shopping", {})["order"] = record
             session["shopping"]["awaiting_confirmation"] = False
@@ -778,6 +778,7 @@ with gr.Blocks(
                     outputs=[live_audio],
                     time_limit=900,
                     concurrency_limit=3,
+                    send_input_on="submit",
                 )
             else:
                 message = gr.Textbox(
