@@ -152,6 +152,10 @@ def refresh_crm():
     return crm.recent_leads(), *crm.dashboard_stats()
 
 
+def refresh_service_appointments():
+    return crm.recent_service_appointments()
+
+
 CUSTOM_CSS = """
 :root, :host, html, body, gradio-app, .gradio-container,
 body.dark, .dark, [data-theme="dark"] {
@@ -763,6 +767,33 @@ with gr.Blocks(
             )
             refresh_btn = gr.Button("Refresh CRM & metrics", variant="secondary")
 
+    with gr.Row(elem_classes=["insights-grid"]):
+        with gr.Column(elem_classes=["surface-card"], elem_id="service-appointments-panel"):
+            gr.HTML("""
+            <div class="section-head">
+                <div class="section-symbol">◷</div>
+                <div>
+                    <h2>Jalandhar service appointment requests</h2>
+                    <p>Voice bookings saved by Gemini Live. Requests remain pending until the provider confirms.</p>
+                </div>
+            </div>
+            """)
+            service_appointments_table = gr.Dataframe(
+                headers=[
+                    "Customer", "Category", "Service", "Provider", "City",
+                    "Preferred date", "Preferred time", "Status", "Phone",
+                    "Email", "Request ID", "Created",
+                ],
+                datatype=["str"] * 12,
+                value=crm.recent_service_appointments(),
+                interactive=False,
+                label="Service appointment requests",
+                elem_id="service-appointments-table",
+            )
+            refresh_service_appointments_btn = gr.Button(
+                "Refresh appointment requests", variant="secondary"
+            )
+
     outputs = [chatbot, session_state, message, lead_name, lead_company, lead_email, lead_phone, lead_score, lead_status, sentiment, crm_table, last_response_state, lead_count, qualified_count, appointment_count]
     if LIVE_VOICE_AVAILABLE:
         live_audio.on_additional_outputs(
@@ -772,6 +803,7 @@ with gr.Blocks(
                 lead_name, lead_company, lead_email, lead_phone,
                 lead_score, lead_status, sentiment, crm_table,
                 lead_count, qualified_count, appointment_count,
+                service_appointments_table,
             ],
             queue=False,
             show_progress="hidden",
@@ -786,6 +818,9 @@ with gr.Blocks(
     book_btn.click(book_demo, [slot, session_state], [session_state, crm_table, booking_status, lead_count, qualified_count, appointment_count])
     summary_btn.click(make_summary, [session_state], [summary])
     refresh_btn.click(refresh_crm, [], [crm_table, lead_count, qualified_count, appointment_count])
+    refresh_service_appointments_btn.click(
+        refresh_service_appointments, [], [service_appointments_table]
+    )
 
 
 if __name__ == "__main__":
