@@ -16,7 +16,11 @@ jobs:
         uses: actions/setup-python@v5
         with:
           python-version: "3.11"
-      - name: Install core dependencies
-        run: python -m pip install -r requirements.txt
+      - name: Install core and Live dependencies
+        run: python -m pip install -r requirements-live.txt
+      - name: Smoke-test app and Live handler imports
+        env:
+          GEMINI_API_KEY: ci-smoke-test-key
+        run: python -c "import app; import live_voice; print('AAHVANI app and Gemini Live handler imported successfully')"
       - name: Run unit tests
         run: python -m unittest discover -s tests -v
