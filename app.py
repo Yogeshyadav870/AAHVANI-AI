@@ -138,11 +138,11 @@ def update_demo_order_status(order_ref, status):
         crm.update_demo_order_status(reference, status)
         record = crm.get_demo_order(reference)
         receipt = (
-            "## Order status updated\\n\\n"
-            f"**Order ID:** {record['order_ref']}\\n\\n"
-            f"**Product:** {record['product_title']}\\n\\n"
-            f"**Total:** ₹{int(record['total_price']):,}\\n\\n"
-            f"**Current status:** {record['status']}\\n\\n"
+            "## Order status updated\n\n"
+            f"**Order ID:** {record['order_ref']}\n\n"
+            f"**Product:** {record['product_title']}\n\n"
+            f"**Total:** ₹{int(record['total_price']):,}\n\n"
+            f"**Current status:** {record['status']}\n\n"
             "Simulated order only — no real shipment exists."
         ) if record else "No demo order has been placed in this conversation yet."
         return (
