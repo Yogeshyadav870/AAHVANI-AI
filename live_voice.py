@@ -35,6 +35,9 @@ def _audio_to_pcm_bytes(audio: np.ndarray) -> bytes:
     return np.ascontiguousarray(array).tobytes()
 
 
+_ACTIVE_LIVE_HANDLER = None
+
+
 class AahvaniLiveHandler(AsyncStreamHandler):
     """Per-connection Gemini Live voice handler with automatic CRM lead capture."""
 
@@ -63,6 +66,7 @@ class AahvaniLiveHandler(AsyncStreamHandler):
         self._assistant_transcript_buffer: list[str] = []
         self._last_output_text = ""
         self._last_output_at = 0.0
+        self._assistant_is_speaking = False
 
     def copy(self) -> "AahvaniLiveHandler":
         return AahvaniLiveHandler()
@@ -150,15 +154,26 @@ question. Never claim to be a human salesperson.
             config=config,
         )
         self.session = await self._session_context.__aenter__()
-        self.status_message = (
-            "Connected. Speak naturally; you can interrupt AAHVANI while it is talking."
-        )
+        self._loop = asyncio.get_running_loop()
+        global _ACTIVE_LIVE_HANDLER
+        _ACTIVE_LIVE_HANDLER = self
+
+        self.status_message = "Connected. AAHVANI is greeting you…"
         await self._publish_ui()
 
         self._tasks = [
             asyncio.create_task(self._send_audio_loop(), name="aahvani-live-send"),
             asyncio.create_task(self._receive_loop(), name="aahvani-live-receive"),
         ]
+
+        # Trigger a short spoken greeting as soon as the customer starts the mic.
+        await self.session.send_realtime_input(
+            text=(
+                "A customer has just started a new live sales conversation. "
+                "Greet them warmly as AAHVANI AI and ask how you can help with "
+                "their sales or customer-management process. Keep it to one sentence."
+            )
+        )
 
     async def receive(self, frame: tuple[int, np.ndarray]) -> None:
         sample_rate, audio = frame
@@ -183,6 +198,19 @@ question. Never claim to be a human salesperson.
             except asyncio.QueueEmpty:
                 pass
         await self.input_queue.put(pcm)
+
+    async def send_text(self, text: str) -> None:
+        """Send a typed customer message through the active Gemini Live session."""
+        cleaned = " ".join((text or "").split()).strip()
+        if not cleaned:
+            return
+        if self.session is None:
+            raise RuntimeError("Start the microphone before sending a text message.")
+
+        await self.session.send_realtime_input(text=cleaned)
+        await self._record_customer_transcript(cleaned)
+        self.status_message = "Message sent. AAHVANI is preparing a spoken reply…"
+        await self._publish_ui()
 
     async def emit(self):
         return await wait_for_item(self.output_queue)
@@ -246,6 +274,12 @@ question. Never claim to be a human salesperson.
                             continue
                         audio = np.frombuffer(audio_bytes, dtype="<i2").copy()
                         if audio.size:
+                            if not self._assistant_is_speaking:
+                                self._assistant_is_speaking = True
+                                self.status_message = (
+                                    "🔊 AAHVANI is speaking — you can interrupt at any time."
+                                )
+                                await self._publish_ui()
                             await self.output_queue.put(
                                 (OUTPUT_SAMPLE_RATE, audio.reshape(1, -1))
                             )
@@ -268,13 +302,19 @@ question. Never claim to be a human salesperson.
                             queued_items.append(item)
                     for item in queued_items:
                         await self.output_queue.put(item)
+                    self._assistant_is_speaking = False
                     await self._flush_agent_transcript(interrupted=True)
                     self.status_message = (
-                        "Listening — AAHVANI was interrupted and is ready for you."
+                        "🎤 Your turn — AAHVANI is listening. Speak or type below."
                     )
                     await self._publish_ui()
                 elif turn_complete or generation_complete:
+                    self._assistant_is_speaking = False
                     await self._flush_agent_transcript(interrupted=False)
+                    self.status_message = (
+                        "🎤 Your turn — speak now or type a message below."
+                    )
+                    await self._publish_ui()
 
         except asyncio.CancelledError:
             raise
@@ -367,5 +407,22 @@ question. Never claim to be a human salesperson.
             self.session = None
 
     async def shutdown(self) -> None:
+        global _ACTIVE_LIVE_HANDLER
         self.stop_event.set()
         await self._close_session()
+        if _ACTIVE_LIVE_HANDLER is self:
+            _ACTIVE_LIVE_HANDLER = None
+
+
+def send_live_text(text: str) -> tuple[bool, str]:
+    """Thread-safe bridge from a Gradio textbox to the active live session."""
+    handler = _ACTIVE_LIVE_HANDLER
+    if handler is None or handler.session is None:
+        return False, "Start the Speak Up microphone first. AAHVANI will greet you automatically."
+    try:
+        future = asyncio.run_coroutine_threadsafe(handler.send_text(text), handler.loop)
+        future.result(timeout=15)
+        return True, "Message sent to the live AAHVANI session."
+    except Exception as exc:
+        logger.exception("Could not send typed text to the live session")
+        return False, f"Could not send the message: {exc}"
