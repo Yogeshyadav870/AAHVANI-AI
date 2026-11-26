@@ -75,3 +75,15 @@ class CRM:
         with self._connect() as conn:
             row = conn.execute("SELECT COUNT(*) AS total FROM appointments WHERE status = 'Booked'").fetchone()
         return int(row["total"])
+
+    def dashboard_stats(self) -> tuple[int, int, int]:
+        """Return total leads, qualified leads, and booked appointments."""
+        with self._connect() as conn:
+            row = conn.execute("""
+                SELECT
+                    COUNT(*) AS total_leads,
+                    COALESCE(SUM(CASE WHEN qualification = 'Qualified' THEN 1 ELSE 0 END), 0) AS qualified_leads,
+                    (SELECT COUNT(*) FROM appointments WHERE status = 'Booked') AS booked_appointments
+                FROM leads
+            """).fetchone()
+        return int(row["total_leads"]), int(row["qualified_leads"]), int(row["booked_appointments"])
