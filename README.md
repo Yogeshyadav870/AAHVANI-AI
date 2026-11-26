@@ -95,6 +95,4 @@ This is an evaluation MVP, not a production telephony agent. Speech features are
 - Do not upload real call recordings or personal customer information.
 - A production version requires consent, retention and deletion controls, access control, encryption and a security review.
 
-## Architecture
 
-See [System Architecture](architecture/system_architecture.md) and the [Round 4 technical talking points](architecture/round4_talking_points.md).
