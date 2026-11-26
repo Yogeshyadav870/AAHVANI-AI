@@ -144,14 +144,97 @@ class AahvaniAgent:
 
         lower = text.lower()
         if not lead.get("company"):
-            company_match = re.search(r"\b(?:at|from|with)\s+([A-Z][A-Za-z0-9& .-]{1,40})(?:,|\.|\bwhere\b|\bwe\b)", text)
+            company_match = re.search(
+                r"\b(?:at|from|with)\s+([A-Z][A-Za-z0-9& .-]{1,40})(?:,|\.|\bwhere\b|\bwe\b)",
+                text,
+            )
             if company_match:
                 lead["company"] = company_match.group(1).strip()
-        need_markers = ["need", "looking for", "want to", "interested in", "help us", "manage", "automate", "customer", "sales", "leads", "calls"]
-        if not lead.get("need") and any(marker in lower for marker in need_markers) and len(text.split()) > 3:
+
+        # Buying-intent statements should become a lead need, not an FAQ lookup.
+        need_markers = (
+            "need", "looking for", "want to", "interested in", "help us",
+            "manage", "automate", "customer", "sales", "leads", "calls",
+            "crm", "store", "storing", "company data", "customer data",
+            "records", "follow-up", "follow up", "book crm",
+        )
+        if not lead.get("need") and any(marker in lower for marker in need_markers) and len(text.split()) > 2:
             lead["need"] = text.strip()
+
         lead["sentiment"] = self._sentiment(text)
         lead["lead_score"], lead["qualification"] = self._score(lead)
+
+    @staticmethod
+    def _is_product_question(text: str) -> bool:
+        """Only route explicit product-information questions to FAQ retrieval."""
+        cleaned = (text or "").strip().lower()
+        question_starters = (
+            r"^(?:what|which|how|does|do|can|could|is|are|will|tell me|explain|describe)\b",
+            r"^(?:give me|show me)\s+(?:details|information|an overview)\b",
+            r"^i want to know\s+(?:about|whether|if|how|what)\b",
+        )
+        return "?" in cleaned or any(re.search(pattern, cleaned) for pattern in question_starters)
+
+    @staticmethod
+    def _fallback_knowledge_answer(document: str) -> str:
+        """Turn a retrieved FAQ section into a short, natural spoken-style answer."""
+        raw_lines = [line.strip() for line in document.splitlines() if line.strip()]
+        bullets = [
+            re.sub(r"^[-*]\s*", "", line)
+            for line in raw_lines
+            if line.startswith(("-", "*"))
+        ]
+        if bullets:
+            return "Northstar CRM includes " + "; ".join(bullets[:2]).rstrip(".") + "."
+
+        paragraphs = [
+            re.sub(r"^#{1,6}\s*", "", line)
+            for line in raw_lines
+            if not line.startswith(("-", "*", "#"))
+        ]
+        cleaned = " ".join(paragraphs)
+        sentences = re.split(r"(?<=[.!?])\s+", cleaned)
+        return " ".join(sentences[:2]).strip() or "I don't have an approved answer for that detail yet."
+
+    def _next_discovery_question(
+        self, lead: dict[str, Any], session: dict[str, Any]
+    ) -> str:
+        """Ask the next missing qualification question once, in a stable order."""
+        questions = (
+            ("need", "What would you like the CRM to help your company manage or improve?"),
+            ("budget", "What approximate budget should I note, or is your budget flexible?"),
+            ("authority", "Will you make the final purchase decision, or will someone else need to approve it?"),
+            ("timeline", "When are you hoping to start using the CRM?"),
+            ("email", "What email address should we use for the demo confirmation and follow-up?"),
+        )
+        for key, question in questions:
+            if not lead.get(key) and not (key == "email" and session.get("contact_skipped")):
+                session["pending_field"] = key
+                return question
+
+        session["pending_field"] = "demo"
+        return (
+            f"Thanks, {lead.get('name') or 'there'}. I have the key details for your CRM requirement. "
+            f"Your current lead score is {lead.get('lead_score', 0)}/100 "
+            f"({lead.get('qualification', 'Nurture')}). Choose a sample demo slot in the dashboard "
+            "and press Confirm demo booking. These are demonstration slots, not live calendar availability."
+        )
+
+    @staticmethod
+    def _is_simple_yes(text: str) -> bool:
+        return bool(re.fullmatch(
+            r"\s*(?:yes|yeah|yep|yup|correct|sure|i do|i will|that's right|that is right)[.! ]*\s*",
+            text,
+            re.I,
+        ))
+
+    @staticmethod
+    def _is_simple_no(text: str) -> bool:
+        return bool(re.fullmatch(
+            r"\s*(?:no|nope|not really|i don't|i do not)[.! ]*\s*",
+            text,
+            re.I,
+        ))
 
     def _gemini_answer(self, user_text: str, history: list[dict[str, str]], context: str) -> str | None:
         if self.client is None:
@@ -185,29 +268,72 @@ Write the next assistant response in 2-4 sentences. Ask at most one useful follo
         if not text:
             return "Please type or record a message so I can help.", session
 
+        pending_field = session.get("pending_field")
         messages.append({"role": "user", "content": text})
         self._extract_facts(text, lead)
-        retrieved = self.knowledge_base.search(text, top_k=2)
-        context = "\n\n".join(item["content"] for item in retrieved)
-        greeting_only = len(text.split()) <= 3 and any(word in text.lower() for word in ["hi", "hello", "hey", "namaste"])
+        lower = text.lower()
 
+        # Interpret short answers using the field AAHVANI asked about last.
+        if pending_field == "budget" and not lead.get("budget"):
+            if re.search(r"\bflexib\w*\b|\bno fixed budget\b|\bnot decided\b", lower):
+                lead["budget"] = "Flexible (no fixed budget)"
+            elif self._is_simple_yes(text) or self._is_simple_no(text):
+                reply = (
+                    "Sure — should I record the budget as flexible, or is there an "
+                    "approximate amount or range you have in mind?"
+                )
+                session["pending_field"] = "budget"
+                messages.append({"role": "assistant", "content": reply})
+                lead["lead_score"], lead["qualification"] = self._score(lead)
+                return reply, session
+
+        if pending_field == "authority" and not lead.get("authority"):
+            if self._is_simple_yes(text):
+                lead["authority"] = "Decision maker"
+            elif self._is_simple_no(text):
+                lead["authority"] = "Influencer / requires approval"
+
+        if pending_field == "timeline" and not lead.get("timeline"):
+            if re.search(r"\bsoon\b|\bas soon as possible\b", lower):
+                lead["timeline"] = "Soon"
+
+        if pending_field == "email" and not lead.get("email"):
+            if re.search(r"\b(skip|prefer not|not now)\b", lower):
+                session["contact_skipped"] = True
+
+        greeting_only = len(text.split()) <= 3 and any(
+            word in lower for word in ("hi", "hello", "hey", "namaste")
+        )
         if greeting_only:
-            reply = "Hello! I'm AAHVANI AI, your sales assistant. What are you hoping to improve in your sales or customer-management process?"
-        elif retrieved and len(text.split()) > 4:
-            reply = self._gemini_answer(text, messages, context)
-            if not reply:
-                reply = f"Here's what I found in our product information: {retrieved[0]['content']}\n\nWould you like me to arrange a product demo?"
+            session["pending_field"] = "need"
+            reply = (
+                "Hello! I'm AAHVANI AI, your sales assistant. What would you like "
+                "your company to manage or improve with a CRM?"
+            )
+        elif self._is_product_question(text):
+            retrieved = self.knowledge_base.search(text, top_k=1)
+            if retrieved and float(retrieved[0].get("score", 0)) >= 0.25:
+                context = retrieved[0]["content"]
+                answer = self._gemini_answer(text, messages, context)
+                if not answer:
+                    answer = self._fallback_knowledge_answer(context)
+                follow_up = self._next_discovery_question(lead, session)
+                reply = (
+                    f"{answer}\n\nTo understand your requirement better, "
+                    f"{follow_up[0].lower() + follow_up[1:]}"
+                )
+            else:
+                follow_up = self._next_discovery_question(lead, session)
+                reply = (
+                    "I don't have an approved product detail for that yet, so I don't want "
+                    "to guess. I can arrange a human follow-up. "
+                    f"To understand your requirement better, "
+                    f"{follow_up[0].lower() + follow_up[1:]}"
+                )
         else:
-            questions = [
-                ("need", "What is the main challenge you're trying to solve in your sales or customer-management process?"),
-                ("budget", "Have you set an approximate budget for solving this, or is the budget still flexible?"),
-                ("authority", "Will you be making the purchase decision, or will someone else need to approve it?"),
-                ("timeline", "When are you hoping to implement a solution?"),
-                ("email", "What email address should we use for the demo confirmation and follow-up?"),
-            ]
-            next_question = next((question for key, question in questions if not lead.get(key)), None)
-            reply = next_question or f"Thanks, {lead.get('name') or 'there'}. I have enough information to prepare a relevant demo. Your current lead score is {lead['lead_score']}/100 ({lead['qualification']}). Choose a demo slot and I'll save the booking."
+            reply = self._next_discovery_question(lead, session)
 
+        lead["lead_score"], lead["qualification"] = self._score(lead)
         messages.append({"role": "assistant", "content": reply})
         return reply, session
 
