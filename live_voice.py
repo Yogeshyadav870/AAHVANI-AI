@@ -159,6 +159,10 @@ Collect only the missing details, one question at a time:
 Remember details already given in the conversation and never ask for them again.
 A vague preference such as "tomorrow morning" must be clarified to a specific
 date and time before saving the request. Do not invent provider availability.
+Collect only the information needed to arrange the appointment. Do not ask for
+medical history, diagnoses, financial account details or other sensitive details.
+Do not provide medical, legal or other professional advice; help arrange the
+appropriate appointment instead.
 
 BOOKING CONFIRMATION AND TOOL USE
 A server-side tool named save_appointment_request is available. It saves an
@@ -294,15 +298,17 @@ question. Never claim to be a human salesperson.
                 "please confirm",
                 "is that correct",
                 "would you like me to book",
+                "shall i book",
                 "shall i place",
+                "to confirm, should i",
             )
         )
         normalized_user = re.sub(r"[,!?]", "", last_user).strip()
         customer_confirmed = bool(re.fullmatch(
             r"(?:yes|yeah|yep|sure|please do|go ahead|confirm|confirmed|"
             r"book it|submit it|do it|that's correct|that is correct|"
-            r"yes please|yes i confirm|yes confirm|yes book it|"
-            r"please book it|yes go ahead)[. ]*",
+            r"yes please|yes i confirm|i confirm|yes confirm|yes book it|"
+            r"please book it|yes go ahead|please proceed)[. ]*",
             normalized_user,
         ))
         return assistant_requested_confirmation and customer_confirmed
@@ -338,6 +344,8 @@ question. Never claim to be a human salesperson.
                     service_name = str(args.get("service_name") or "").strip()
                     city = str(args.get("city") or "Jalandhar").strip()
                     provider_name = str(args.get("provider_name") or "").strip()
+                    if provider_name.lower() in {"", "any", "any provider", "no preference", "not sure", "none"}:
+                        provider_name = "Provider to be selected"
 
                     if not lead.get("name"):
                         lead["name"] = customer_name
