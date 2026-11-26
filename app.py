@@ -52,6 +52,59 @@ def display_lead(session):
 def chat(message, history, session):
     session = session or initial_state()
     answer, session = agent.respond(message, session)
+
+    # Text Chat shares the same local-service appointment workflow as Gemini Live.
+    request = session.pop("appointment_to_save", None)
+    if request:
+        lead = session.setdefault("lead", {})
+        lead["name"] = request.get("customer_name") or lead.get("name", "")
+        lead["phone"] = request.get("customer_phone") or lead.get("phone", "")
+        lead["email"] = request.get("customer_email") or lead.get("email", "")
+        lead["need"] = f"{request.get('service_category', '')}: {request.get('service_name', '')}".strip(": ")
+        lead["lead_score"], lead["qualification"] = agent._score(lead)
+        try:
+            session["lead_id"] = crm.save_lead(lead, session.get("lead_id"))
+            record = crm.create_service_appointment_request(
+                lead_id=session["lead_id"],
+                service_category=request["service_category"],
+                service_name=request["service_name"],
+                provider_name=request.get("provider_name") or "Provider to be selected",
+                city=request.get("city") or "Jalandhar",
+                preferred_date=request["preferred_date"],
+                preferred_time=request["preferred_time"],
+                customer_name=request["customer_name"],
+                customer_phone=request.get("customer_phone", ""),
+                customer_email=request.get("customer_email", ""),
+                notes=request.get("notes", ""),
+                source="Text Chat",
+            )
+            saved = session.setdefault("appointments", [])
+            if not any(item.get("appointment_id") == record["id"] for item in saved):
+                saved.append({
+                    "appointment_id": record["id"],
+                    "service_category": record["service_category"],
+                    "service_name": record["service_name"],
+                    "provider_name": record["provider_name"],
+                    "city": record["city"],
+                    "preferred_date": record["preferred_date"],
+                    "preferred_time": record["preferred_time"],
+                    "status": record["status"],
+                })
+            answer = (
+                f"Your {record['service_name']} request has been saved to the AAHVANI CRM. "
+                f"Reference: {record['id'][:8].upper()}. Status: {record['status']}. "
+                "The provider and requested time have not been confirmed yet."
+            )
+            session["active_flow"] = None
+            session["appointment_request"] = None
+            session["appointment_confirmation_pending"] = False
+        except Exception as exc:
+            answer = f"I couldn't save the appointment request: {exc}. Your details are still here; please try confirming again."
+            session["appointment_confirmation_pending"] = True
+
+        if session.get("messages") and session["messages"][-1].get("role") == "assistant":
+            session["messages"][-1]["content"] = answer
+
     history = list(history or [])
     history.extend([
         {"role": "user", "content": message},
@@ -59,7 +112,10 @@ def chat(message, history, session):
     ])
     name, company, email, phone, score, status, sentiment = display_lead(session)
     session["lead_id"] = crm.save_lead(session.get("lead", {}), session.get("lead_id"))
-    return history, session, "", name, company, email, phone, score, status, sentiment, crm.recent_leads(), answer, *crm.dashboard_stats()
+    return (
+        history, session, "", name, company, email, phone, score, status, sentiment,
+        crm.recent_leads(), answer, *crm.dashboard_stats(), crm.recent_service_appointments()
+    )
 
 
 def speak_text(text):
@@ -110,7 +166,7 @@ def voice_conversation(transcript, history, session):
     transcript = (transcript or "").strip()
     failure_prefixes = ("Could not transcribe audio:", "Voice transcription is optional", "No speech detected")
     if not transcript or transcript.startswith(failure_prefixes):
-        return (*([gr.skip()] * 15), None, "Record a voice message first, then send it here.")
+        return (*([gr.skip()] * 16), None, "Record a voice message first, then send it here.")
 
     result = chat(transcript, history, session)
     audio_path, speech_status = speak_text(result[11])
@@ -602,7 +658,7 @@ with gr.Blocks(
         <div class="hero-copy">
             <div class="hero-kicker"><span class="hero-dot"></span> AI APPOINTMENT & CRM WORKSPACE <span class="hero-tag">LOCAL MVP</span></div>
             <h1>AAHVANI <span>AI</span></h1>
-            <p>Natural voice conversations, local service appointment requests, and customer CRM.</p>
+            <p>Voice and text conversations for local service requests, sales enquiries, and customer CRM.</p>
         </div>
         <div class="hero-brandmark" aria-label="AAHVANI AI headset and soundwave logo">
             <svg viewBox="0 0 220 160" role="img" aria-hidden="true">
@@ -657,17 +713,17 @@ with gr.Blocks(
         </div>
         <div class="live-mode-note">
             Click the <strong>microphone icon</strong> to start a live conversation. AAHVANI will greet you automatically.
-            Speak naturally, or type in the input and press Enter. While connected, the microphone button mutes/unmutes you,
-            the speaker button mutes/unmutes AAHVANI, and the square button ends the conversation.
+            Speak naturally after the greeting. The waveform interface is voice-only: there is no text composer or send button.
+            Use the microphone control to connect/mute and the stop control to end the session.
             Customer transcripts and confirmed appointment requests are saved to the local CRM. Appointment requests remain pending until the provider confirms. Use headphones for the clearest conversation.
         </div>
         """)
         if LIVE_VOICE_AVAILABLE:
             live_audio = WebRTC(
-                label="Speak Up — type or use the microphone",
+                label="Speak with AAHVANI — voice only",
                 mode="send-receive",
                 modality="audio",
-                variant="textbox",
+                variant="wave",
                 icon_button_color="#b98527",
                 pulse_color="#d5a24d",
                 elem_id="aahvani-live-webrtc",
@@ -677,9 +733,8 @@ with gr.Blocks(
                 elem_classes=["status-note"],
             )
             gr.Markdown(
-                "Controls: microphone = start / mute yourself; speaker = mute or unmute AAHVANI; "
-                "square = end conversation. To send text, type in the built-in input and press Enter. "
-                "Demo appointments still require selecting a slot and clicking **Confirm demo booking**.",
+                "Voice controls: start the microphone to connect, speak naturally, and use Stop to end the session. "
+                "The Live Voice panel has no typing box or send button.",
                 elem_classes=["live-control-hint"],
             )
             live_handler = AahvaniLiveHandler()
@@ -706,13 +761,13 @@ with gr.Blocks(
             gr.HTML("""
             <div class="section-head">
                 <div class="section-symbol">✦</div>
-                <div><h2>Live customer conversation</h2><p>Talk naturally. AAHVANI captures intent and guides the next step.</p></div>
+                <div><h2>Text Chat — Appointments & CRM</h2><p>Request a local service appointment or ask about the Northstar CRM demo.</p></div>
             </div>
             """)
             chatbot = gr.Chatbot(height=420, label="Conversation", type="messages", elem_id="conversation-chat")
             with gr.Row(elem_classes=["composer-row"]):
                 message = gr.Textbox(
-                    placeholder="Start with: Hi, I run a small agency and need help tracking leads...",
+                    placeholder="Try: I need a dental appointment tomorrow at 11 AM...",
                     show_label=False, scale=8, lines=2, elem_id="message-input"
                 )
                 send = gr.Button("Send  ↗", variant="primary", scale=1)
@@ -789,7 +844,7 @@ with gr.Blocks(
                 <div class="section-symbol">◷</div>
                 <div>
                     <h2>Jalandhar service appointment requests</h2>
-                    <p>Voice bookings saved by Gemini Live. Requests remain pending until the provider confirms.</p>
+                    <p>Appointment requests saved from Live Voice or Text Chat. Requests remain pending until the provider confirms.</p>
                 </div>
             </div>
             """)
@@ -838,7 +893,7 @@ with gr.Blocks(
                 elem_classes=["status-note"]
             )
 
-    outputs = [chatbot, session_state, message, lead_name, lead_company, lead_email, lead_phone, lead_score, lead_status, sentiment, crm_table, last_response_state, lead_count, qualified_count, appointment_count]
+    outputs = [chatbot, session_state, message, lead_name, lead_company, lead_email, lead_phone, lead_score, lead_status, sentiment, crm_table, last_response_state, lead_count, qualified_count, appointment_count, service_appointments_table]
     if LIVE_VOICE_AVAILABLE:
         live_audio.on_additional_outputs(
             lambda *values: values,
