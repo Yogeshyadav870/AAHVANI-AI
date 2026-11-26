@@ -122,10 +122,13 @@ class ShoppingCatalogue:
     @classmethod
     def detect_use_case(cls, text: str) -> str:
         lower = (text or "").lower()
+        # Match whole words/phrases, not arbitrary substrings: e.g. "smartphone"
+        # must not accidentally match "art" and trigger the creative-use path.
         for use_case, markers in cls.USE_CASES.items():
-            if any(marker in lower for marker in markers):
-                return use_case
-        if re.search(r"\b(no preference|anything|all round|all-round|general use)\b", lower):
+            for marker in markers:
+                if re.search(r"(?<!\\w)" + re.escape(marker) + r"(?!\\w)", lower):
+                    return use_case
+        if re.search(r"\\b(no preference|anything|all round|all-round|general use)\\b", lower):
             return "everyday"
         return ""
 
