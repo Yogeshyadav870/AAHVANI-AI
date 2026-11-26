@@ -1,99 +1,79 @@
 <div align="center">
   <img src="assets/aahvani_logo.svg" alt="AAHVANI AI headset and waveform logo" width="130"/>
   <h1>AAHVANI AI</h1>
-  <p><strong>Voice-First AI Assistant for Sales & Service Appointments</strong></p>
-  <p>Intelligence that speaks. Conversations that convert.</p>
+  <p><strong>Multimodal AI Shopping & Product Recommendation Assistant</strong></p>
+  <p>Intelligence that speaks. Shopping that feels personal.</p>
 </div>
 
-AAHVANI AI is a voice-first conversational assistant with a local CRM. It supports contextual text conversations, optional real-time Gemini Live voice, sales lead capture and qualification, and voice-led service appointment requests for Jalandhar across categories such as healthcare, salons, vehicle services, professional consultations, fitness and education.
+AAHVANI AI is a voice-and-text shopping assistant built around one shared conversation. Customers describe what they want to buy, answer a few useful questions, compare up to three catalogue matches, select a product and place a simulated order. The dashboard keeps the existing warm beige, cream and gold visual identity and combines the chat, recommendations, order receipt and order history in one workspace.
 
-> **Round 3 project:** Advanced AI Project Challenge & Technical Discussion — FORTIVEX AI PRIVATE LIMITED.
+> **Round 3 project:** Advanced AI Project Challenge & Technical Discussion — FORTIVEX AI PRIVATE LIMITED. This is an e-commerce sales-agent use case: the assistant understands buying intent, qualifies preferences, recommends relevant products and records the order outcome.
 
 ## Quick links for evaluators
 
 | Material | File |
 |---|---|
-| One-page project report | [`project_report.md`](project_report.md) |
-| End-to-end project workflow graph | [`architecture/workflow.md`](architecture/workflow.md) |
-| Visual system architecture diagram | [`architecture/system_architecture.svg`](architecture/system_architecture.svg) |
-| Architecture, deployment, security and scale plan | [`architecture/system_architecture.md`](architecture/system_architecture.md) |
-| End-to-end practical demo script | [`DEMO_WALKTHROUGH.md`](DEMO_WALKTHROUGH.md) |
-| Automated tests | [`tests/test_core.py`](tests/test_core.py) |
-
-## System architecture
-
-![AAHVANI AI current MVP system architecture](architecture/system_architecture.svg)
-
-The diagram describes the **implemented MVP**, including optional Gemini Live browser audio. The 100,000-user design is a proposed production architecture documented separately; it has not been deployed or load-tested.
-
-## Business problem and proposed solution
-
-Small and medium businesses receive customer inquiries through websites, social media and other channels. Sales teams spend time answering repeated questions, gathering customer details, identifying serious prospects and arranging introductory demos.
-
-AAHVANI AI demonstrates an automated first-line sales workflow. It aims to reduce repetitive initial work, capture lead information consistently and help salespeople focus on qualified prospects. It is designed for use cases such as agencies, service providers, education consultancies and real-estate teams.
-
-The product used for the demonstration, **Northstar CRM**, is fictional sample data. It is not a real customer or external CRM integration.
+| One-page project report | [project_report.md](project_report.md) |
+| End-to-end shopping workflow | [architecture/workflow.md](architecture/workflow.md) |
+| Visual architecture diagram | [architecture/system_architecture.svg](architecture/system_architecture.svg) |
+| Architecture, scale, security and cost plan | [architecture/system_architecture.md](architecture/system_architecture.md) |
+| Practical demo script | [DEMO_WALKTHROUGH.md](DEMO_WALKTHROUGH.md) |
+| Automated tests | [tests/test_core.py](tests/test_core.py) |
 
 ## What the current MVP implements
 
-| Capability | Current implementation | Status |
-|---|---|---|
-| Customer interaction | Gradio text chat with service appointment intake and Northstar CRM sales flow | Implemented |
-| Contextual memory | Conversation and lead data in Gradio session state | Implemented |
-| Product knowledge | Local Markdown FAQ with custom TF-IDF-style lexical ranking | Implemented |
-| Response generation | Deterministic local text-chat fallback; optional Gemini text generation | Implemented / optional |
-| Live voice conversation | Bidirectional WebRTC audio streaming to Gemini Live with native speech responses and interruption support | Optional; requires API key and live dependencies |
-| Gemini Live appointment function calling | Gemini collects appointment details, reads them back, waits for explicit customer confirmation and calls a server-side Python tool | Optional; requires live mode and API key |
-| Service appointment CRM | Stores service category, provider, city, requested date/time, customer contact, status and request reference in SQLite from both Text Chat and Gemini Live | Implemented; requests start Pending provider confirmation |
-| Voice transcript and CRM sync | Gemini Live input/output transcription; customer transcript feeds existing lead extraction and SQLite | Optional; requires live mode |
-| Lead qualification | BANT-inspired, transparent 0–100 heuristic | Implemented |
-| Sentiment | Positive/negative keyword-count baseline | Implemented |
-| Lead and appointment storage | SQLite `leads` and `appointments` tables | Implemented |
-| Demo booking | User-confirmed sample slots persisted in SQLite | Implemented |
-| Call summary | Structured summary generated from session information | Implemented |
-| Batch voice fallback | Faster-Whisper local CPU INT8 transcription plus online Edge TTS response | Optional |
-| Live speech-to-speech | Gemini Live native audio over FastRTC/WebRTC; no separate batch STT/TTS round trip | Optional; requires API key |
-| Live phone calls | PSTN/telephony provider, phone number and call transfer | Future work |
-| Multilingual experience | Whisper is multilingual-capable, but end-to-end multilingual UX and output voices are not validated in this MVP | Partial / future work |
-| External calendar / CRM | No live third-party integration | Future work |
+| Capability | Current implementation |
+|---|---|
+| Unified chat | One Gradio conversation area; in Live mode its integrated composer accepts typed text and microphone audio in the same session |
+| Product categories | Smartphones, laptops, headphones, tablets, smartwatches, monitors, cameras, home appliances, speakers and gaming consoles |
+| Preference gathering | Category-aware prompts for budget, primary use and brand preference |
+| Product retrieval | Python filters and ranks a curated local JSON catalogue and returns up to three matching products |
+| Product selection | Customer can say or type option 1, 2 or 3; Gemini Live also has a server-side selection tool |
+| Simulated checkout | Explicit confirmation is required before an order is written to SQLite |
+| Order receipt | Success confirmation, unique AAH order reference, product, quantity, total and initial Pending status |
+| Order tracking | Demo statuses: Pending, Processing, Shipped, Delivered and Cancelled; text and voice can look up an order reference |
+| Live voice | FastRTC/WebRTC with Gemini Live native audio, input/output transcription and server-side function tools |
+| Text fallback | Deterministic local shopping conversation uses the same catalogue and CRM order functions when Live Voice is not configured |
+| Persistence | SQLite stores simulated orders, status changes and order references |
+| Tests | unittest covers existing lead/CRM logic, shopping recommendations, selection confirmation and demo order lifecycle |
 
-**Accuracy about appointment booking:** Both Text Chat and Gemini Live can gather local service appointment details, read the request back and wait for an explicit yes/confirmation before saving it in the `service_appointments` SQLite table. Gemini Live uses function calling to invoke a Python server-side tool; Text Chat uses the same CRM persistence through its text conversation workflow. The saved status is **Pending provider confirmation**. This version does not yet have a live Jalandhar provider directory or external provider/calendar APIs, so it records a booking request rather than claiming that a real provider slot is confirmed. The CRM dashboard lets an operator update the status after receiving confirmation from the provider.
+## Example customer journey
 
-**Accuracy about the current demo:** Text chat continues to use the deterministic local fallback unless `GEMINI_API_KEY` is configured for optional Gemini text generation. Live Voice Mode also uses `GEMINI_API_KEY`, connects to the configurable `GEMINI_LIVE_MODEL`, and sends microphone audio to Google's cloud service. The FastRTC/WebRTC transport is browser-to-server; the API key remains on the Python server. The older Faster-Whisper + Edge TTS path remains available as a separate fallback. This project does not provide a live phone number or PSTN telephony.
+1. Customer: "I need a gaming laptop under ₹60,000."
+2. AAHVANI asks about primary use or any missing preference (for example, brand).
+3. The Python recommendation engine searches the local demo catalogue and displays up to three options.
+4. Customer says or types "option 2".
+5. AAHVANI reads the selection and demo price back and asks for explicit confirmation.
+6. Customer says "yes". The order is created in SQLite and the chat shows a success receipt with an AAH-XXXXXXXX reference and Pending status.
+7. The customer can ask for the order status using the reference. The dashboard also provides a demo status control to move an order through Processing, Shipped and Delivered.
 
-## End-to-end demonstration
+Smartphone, headphone, tablet, watch, monitor, camera, appliance, speaker and gaming-console conversations use the same reusable flow with category-specific follow-up questions.
 
-Use synthetic details only. The full step-by-step script is in [`DEMO_WALKTHROUGH.md`](DEMO_WALKTHROUGH.md).
+## Important demo boundaries
 
-1. Start with a customer greeting and show that the agent responds.
-2. Ask: `What features does Northstar CRM provide for a small marketing agency?` to demonstrate FAQ retrieval.
-3. Submit this sample prospect message:
-
-   `I'm Rahul, founder at BrightWave Agency. We need a CRM to manage leads and follow-ups. Our budget is ₹50,000, I make the final decision, and we want to implement it this month. My email is rahul@example.com.`
-
-4. Show the extracted lead fields, score and qualification status.
-5. Save the lead, select a sample slot and confirm the demo booking.
-6. Generate the call summary and refresh the CRM table and KPI cards.
-
-For the sample signals above, the BANT-inspired score is 100/100: Need 30 + Budget 25 + Decision authority 25 + Timeline 20. The score is a transparent heuristic, not a trained prediction model.
+- The catalogue is curated sample data. Product titles, prices and specifications are labelled as illustrative demo listings; they are not live retailer inventory, current offers or verified stock.
+- No payment is collected. AAHVANI does not request card details, UPI PINs or payment credentials.
+- No retailer, courier or external order system is contacted. Order status changes are simulated inside the local dashboard.
+- Gemini Live uses function calling for product search, selection, demo-order creation and demo-order status lookup. The Python server validates inputs and requires a separate explicit confirmation before creating an order.
+- The deterministic text fallback uses the same product catalogue and order logic. It is available without a Gemini key; Live Voice requires the optional dependencies and a server-side GEMINI_API_KEY.
+- The current catalogue matching is structured filtering/ranking, not an embedding-based vector database. No real retailer APIs are integrated.
 
 ## Technology stack
 
-- **Python:** agent logic, extraction, scoring and workflow.
-- **Gradio:** interactive interface and session state.
-- **SQLite:** local lead and appointment persistence.
-- **Custom lexical retrieval:** local FAQ search; no vector database is used.
-- **Gemini Live API:** optional low-latency speech-to-speech voice conversations.
-- **FastRTC/WebRTC:** continuous browser microphone and speaker transport.
-- **Gemini text API:** optional response generation for the text-chat path.
-- **Faster-Whisper + Edge TTS:** optional batch voice fallback (local STT, online TTS).
-- **unittest:** automated checks for core agent and CRM behaviour.
+- **Python:** product matching, conversation fallback, order validation and workflow.
+- **Gradio:** dashboard, conversation transcript, integrated voice/text composer and order panels.
+- **SQLite:** persistent simulated order history and status updates.
+- **JSON catalogue:** editable demo product listings across ten categories.
+- **Gemini Live API:** optional real-time speech-to-speech conversation and function calling.
+- **FastRTC/WebRTC:** browser microphone, speaker and integrated textbox transport.
+- **NumPy:** microphone audio conversion/resampling support.
+- **unittest:** deterministic checks for agent and database logic.
 
 ## Run locally on Windows
 
-Python 3.11+ is recommended. The project has also been run locally with Python 3.13. Gradio is pinned to `5.49.1` because the current FastRTC release declares compatibility with Gradio versions below 6; this keeps the text and live-voice interfaces on a compatible version.
+Python 3.11+ is recommended. Gradio is pinned to 5.49.1 to remain compatible with FastRTC 0.0.34.
 
-```powershell
+~~~powershell
 git clone https://github.com/Yogeshyadav870/AAHVANI-AI.git
 cd AAHVANI-AI
 
@@ -104,123 +84,51 @@ python -m pip install --upgrade pip
 python -m pip install -r requirements.txt
 python -m unittest discover -s tests -v
 python app.py
-```
+~~~
 
-Open the local Gradio URL printed in the terminal (normally `http://127.0.0.1:7860`).
+Open the local Gradio URL printed in the terminal (normally http://127.0.0.1:7860).
 
-### Optional: Gemini-powered response generation
+### Enable the unified Live Voice + Text chat
 
-Install the optional package:
+Install the optional Live dependencies:
 
-```bash
-pip install -r requirements-gemini.txt
-```
-
-Set `GEMINI_API_KEY` in a local `.env` file. Never commit API keys or the `.env` file. Without a valid key, the deterministic local response path remains available.
-
-### Optional: real-time Live Voice Mode
-
-Live Voice Mode adds a **Speak Up** voice-only waveform control to the dashboard. Click the microphone control to connect; AAHVANI sends a short spoken greeting automatically. Speak naturally after the greeting. The receive loop remains active across completed Gemini turns so the customer can continue speaking without reconnecting. The waveform UI has no integrated text composer or send button. It uses FastRTC/WebRTC for continuous bidirectional browser audio and Google's Gemini Live API for speech-to-speech conversation. It supports voice activity detection, natural turn-taking and interruption/barge-in. Customer speech transcription and typed messages are fed into the existing lead extractor and SQLite CRM; the dashboard's lead panel and CRM metrics update from the live session.
-
-Install the live dependencies:
-
-```powershell
-pip install -r requirements-live.txt
-```
-
-Create a local `.env` file from the example and add your key there (never paste it into GitHub or browser JavaScript). Create a key in [Google AI Studio](https://aistudio.google.com/app/apikey):
-
-```powershell
+~~~powershell
+python -m pip install -r requirements-live.txt
 copy .env.example .env
-```
+~~~
 
-Then edit `.env` and set:
+Edit .env locally and set:
 
-```dotenv
+~~~dotenv
 GEMINI_API_KEY=your_google_ai_studio_key
 GEMINI_LIVE_MODEL=gemini-3.8-live
 GEMINI_LIVE_VOICE=Kore
-```
+~~~
 
-Restart the app with `python app.py`. In the dashboard, open **Speak Up — Live Voice Mode**, allow microphone access and click the microphone icon. AAHVANI will greet you automatically. You can then speak or type in the built-in input and press Enter. The microphone icon mutes/unmutes your microphone, the speaker icon mutes/unmutes AAHVANI, and the square icon ends the session. The status line indicates when microphone audio reaches Gemini, when AAHVANI is speaking and when it is your turn. Use headphones to reduce acoustic echo.
+Create a key in [Google AI Studio](https://aistudio.google.com/app/apikey). Keep it only in the local .env file; never commit it or paste it into browser-side code.
 
-For a local service appointment in either Text Chat or Live Voice, tell AAHVANI what you need (for example, a dental consultation in Jalandhar). It collects the provider preference, requested date/time, customer name and a phone/email, reads the details back, and asks for explicit confirmation. Gemini then calls the server-side `save_appointment_request` function. The request appears in **Jalandhar service appointment requests** in the CRM dashboard with status **Pending provider confirmation**. Do not describe this as a confirmed external booking until the provider confirms it and an operator updates the CRM status with a confirmation note/reference.
+Restart with python app.py. In the dashboard, start the Live conversation using the integrated microphone control. AAHVANI greets the customer; then the same input area accepts either typed messages or speech. Both methods use the same Gemini Live session and conversation history. Use headphones to reduce acoustic echo.
 
-**Implementation detail:** The live connection explicitly selects the Gemini Live `v1beta` endpoint with the `gemini-3.8-live` model. The optional voice and Gemini text dependencies are pinned to `google-genai==2.0.0` alongside `gradio==5.49.1` and `fastrtc==0.0.34`. This combination keeps their Pydantic dependency ranges compatible while retaining the Live API and transcription configuration used by this prototype. FastRTC `0.0.34` currently requires `gradio>=4.0,<6.0`, so the project pins Gradio `5.49.1` rather than Gradio 6.\n\n**Privacy and cost:** Live microphone audio is sent to the Gemini Live API for processing. Usage is subject to your Google AI Studio project's quota and the current [Gemini API pricing](https://ai.google.dev/gemini-api/docs/pricing). The API key stays on the server in the local `.env` file. Do not use real customer data or recordings without consent.
+### Text-only fallback
 
-If no key is configured or live dependencies are not installed, the standard text workflow and batch voice fallback remain available.
-
-### Optional: voice input and output
-
-```bash
-pip install -r requirements-voice.txt
-```
-
-Faster-Whisper downloads its selected model the first time it is loaded. The model is cached in the running process. Edge TTS requires internet access. After recording, review the transcription and click **Send voice message & hear reply**.
+When GEMINI_API_KEY or the Live dependencies are not available, the dashboard still provides a text composer. It uses the deterministic Python shopping flow and the same demo catalogue, order database and order tracking.
 
 ## Testing
 
 Run:
 
-```bash
+~~~powershell
 python -m unittest discover -s tests -v
-```
+~~~
 
-The repository includes tests for lead scoring, fact extraction, conversation memory, FAQ retrieval, lead-to-booking workflow and SQLite CRM persistence/dashboard counts. These tests validate core logic; they are not a load or production-readiness test.
+The repository includes tests for the existing agent/CRM logic, category detection, Indian budget formats, category/budget-constrained product retrieval, phone and laptop recommendation flows, product-selection confirmation, demo-order persistence, idempotency and status updates. GitHub Actions is configured to run the suite on pushes and pull requests. These unit tests do not validate browser microphone access, external network quality or production-scale load.
 
-## Commercial feasibility
+## Proposed production architecture
 
-Potential customers include small and medium businesses that handle frequent inbound inquiries. A plausible commercial model is a monthly SaaS subscription with usage-based charges for voice minutes or conversation volume. Pricing would need to be validated through customer pilots.
+The current application is a local prototype using Gradio, in-process conversation state and SQLite. It has not been deployed or load-tested for 100,000 users. A production design would add an API gateway, authenticated stateless application services, managed PostgreSQL, Redis for sessions, scalable voice workers, queues, observability, backups and autoscaling. Capacity planning must use peak concurrent conversations and audio throughput rather than registered users alone.
 
-Key success measures include qualified-lead rate, appointment conversion, response latency, cost per qualified lead, human handoff rate and customer satisfaction. Main variable costs are LLM usage (if enabled), speech-to-text, text-to-speech, telephony minutes, compute, storage and bandwidth. See the [architecture and cost model](architecture/system_architecture.md).
+## Security and commercial feasibility
 
-## Scalability, security and deployment
+The MVP uses demo catalogue records and simulated orders. It does not store payment credentials or make real purchases. A production service would require authenticated user accounts, TLS, encryption at rest, role-based access, secure secrets management, explicit consent and retention controls, audit logging, retailer integrations and payment-provider compliance.
 
-The current prototype runs as a local Gradio/Python application with SQLite and in-process session state. It is **not** production-scaled.
-
-The documented production path for up to 100,000 registered users separates stateless application services from voice workers, uses PostgreSQL for durable transactions, Redis for session state, a vector database for semantic retrieval, queues for asynchronous tasks and horizontally scaled containers behind an API gateway. Sizing must be based on peak concurrent calls and request/audio throughput, not registered-user count alone.
-
-Production controls would include TLS, encryption at rest, tenant isolation, authentication, role-based access, secrets management, call-recording consent, retention/deletion policies, audit logs, monitoring, backups and incident response. See [`architecture/system_architecture.md`](architecture/system_architecture.md) for the deployment, security and cost discussion.
-
-## Known limitations and next steps
-
-- No PSTN telephony, phone number or call transfer; Live Voice Mode is browser-based WebRTC.
-- No live Jalandhar provider directory or provider/calendar booking API yet; Gemini saves appointment requests as pending until provider confirmation.
-- The local appointment CRM is available, but provider matching, live availability checks, automated provider notifications and online provider confirmation are future integrations.
-- No external CRM integration.
-- Retrieval is lexical and based on a small local FAQ, not vector embeddings.
-- Gemini is optional and not active in the default demo.
-- Lead scoring and sentiment are rule/keyword baselines.
-- Full multilingual interaction has not been validated.
-- No authentication, multi-tenant isolation, production observability or 100,000-user load test in the MVP.
-
-Next steps: integrate telephony and real calendar/CRM APIs, evaluate multilingual conversations, improve extraction and semantic retrieval, add production security controls, and conduct concurrency, latency and cost tests.
-
-## Repository structure
-
-```text
-AAHVANI-AI/
-├── app.py
-├── live_voice.py
-├── agent.py
-├── crm.py
-├── knowledge_base.py
-├── data/product_faq.md
-├── assets/aahvani_logo.svg
-├── architecture/
-│   ├── system_architecture.md
-│   ├── system_architecture.svg
-│   └── round4_talking_points.md
-├── tests/test_core.py
-├── project_report.md
-├── DEMO_WALKTHROUGH.md
-├── requirements.txt
-├── requirements-gemini.txt
-├── requirements-voice.txt
-├── requirements-live.txt
-└── .env.example
-```
-
-## Security and demo data
-
-Use synthetic customer details only. Do not commit `.env`, API keys, database files, real customer records or call recordings. The local database is git-ignored. A production deployment requires privacy, consent, access-control, retention and security reviews.
+Potential business models include an e-commerce sales assistant subscription or usage-based conversational commerce service. Pilot metrics should include recommendation click/selection rate, assisted conversion, average order value, abandonment rate, response latency, cost per completed conversation and customer satisfaction. Real retailer prices, inventory, delivery estimates and integrations must be validated before offering real transactions.
