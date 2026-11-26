@@ -409,10 +409,11 @@ and clearly state that this is a simulated order.
             "store": True,
         }
         previous_id = session.get("gemini_previous_interaction_id")
+        # Every turn must include the customer's new message. previous_interaction_id
+        # supplies the prior server-side conversation context; it does not replace input.
+        request_options["input"] = session["_last_text_message"]
         if previous_id:
             request_options["previous_interaction_id"] = previous_id
-        else:
-            request_options["input"] = session["_last_text_message"]
 
         interaction = client.interactions.create(**request_options)
 
