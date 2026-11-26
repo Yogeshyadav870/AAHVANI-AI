@@ -214,12 +214,16 @@ question. Never claim to be a human salesperson.
                 input_transcription = getattr(server_content, "input_transcription", None)
                 input_text = getattr(input_transcription, "text", None) if input_transcription else None
                 if input_text:
+                    # input_transcription is the finalized user utterance (not the
+                    # interim hypothesis), so commit it to the existing lead workflow.
                     await self._record_customer_transcript(input_text)
 
                 output_transcription = getattr(server_content, "output_transcription", None)
                 output_text = getattr(output_transcription, "text", None) if output_transcription else None
                 if output_text:
-                    await self._record_agent_transcript(output_text)
+                    # Gemini streams output captions in fragments; aggregate the
+                    # fragments and store one complete assistant turn.
+                    self._assistant_transcript_buffer.append(output_text)
 
                 model_turn = getattr(server_content, "model_turn", None)
                 if model_turn:
@@ -234,7 +238,29 @@ question. Never claim to be a human salesperson.
                                 (OUTPUT_SAMPLE_RATE, audio.reshape(1, -1))
                             )
 
-                if getattr(server_content, "interrupted", False):
+                interrupted = bool(getattr(server_content, "interrupted", False))
+                turn_complete = bool(getattr(server_content, "turn_complete", False))
+                generation_complete = bool(getattr(server_content, "generation_complete", False))
+
+                if interrupted:
+                    # Remove audio that has not yet been emitted, avoiding stale
+                    # playback after the customer barges in.
+                    queued_items = []
+                    while not self.output_queue.empty():
+                        try:
+                            item = self.output_queue.get_nowait()
+                        except asyncio.QueueEmpty:
+                            break
+                        if not (isinstance(item, tuple) and len(item) == 2):
+                            queued_items.append(item)
+                    for item in queued_items:
+                        await self.output_queue.put(item)
+                    await self._flush_agent_transcript(interrupted=True)
+
+                elif turn_complete or generation_complete:
+                    await self._flush_agent_transcript(interrupted=False)
+
+                if interrupted:
                     self.status_message = "Listening — AAHVANI was interrupted and is ready for you."
                     await self._publish_ui()
 
@@ -267,22 +293,27 @@ question. Never claim to be a human salesperson.
         self.status_message = "Customer speech recognised and lead details synced to the local CRM."
         await self._publish_ui()
 
-    async def _record_agent_transcript(self, text: str) -> None:
-        cleaned = " ".join(str(text).split()).strip()
+    async def _flush_agent_transcript(self, interrupted: bool) -> None:
+        cleaned = " ".join(" ".join(self._assistant_transcript_buffer).split()).strip()
+        self._assistant_transcript_buffer.clear()
         if not cleaned:
             return
+
         now = time.monotonic()
         if cleaned == self._last_output_text and now - self._last_output_at < 2.0:
             return
         self._last_output_text = cleaned
         self._last_output_at = now
-
         self.last_response_text = cleaned
+
         self.session_state.setdefault("messages", []).append(
             {"role": "assistant", "content": cleaned}
         )
         self.chat_history.append({"role": "assistant", "content": cleaned})
-        self.status_message = "AAHVANI is responding. You can speak to interrupt."
+        self.status_message = (
+            "AAHVANI's reply was interrupted." if interrupted
+            else "AAHVANI finished speaking. You can continue the conversation."
+        )
         await self._publish_ui()
 
     async def _publish_ui(self) -> None:
