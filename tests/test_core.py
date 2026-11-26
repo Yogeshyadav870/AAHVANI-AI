@@ -5,6 +5,7 @@ from pathlib import Path
 from agent import AahvaniAgent
 from crm import CRM
 from knowledge_base import KnowledgeBase
+from shopping import ShoppingAgent, ShoppingCatalogue
 
 
 class AgentCoreTests(unittest.TestCase):
@@ -305,6 +306,133 @@ class CRMTests(unittest.TestCase):
             self.assertEqual(crm.appointment_count(), 1)
             self.assertEqual(crm.dashboard_stats(), (1, 1, 1))
             self.assertEqual(len(crm.recent_leads()), 1)
+
+
+class ShoppingAgentTests(unittest.TestCase):
+    def setUp(self):
+        self.catalogue = ShoppingCatalogue()
+        self.agent = ShoppingAgent(self.catalogue)
+        self.session = self.agent.new_session()
+
+    def test_detects_multiple_general_product_categories(self):
+        self.assertEqual(self.catalogue.detect_category("I want to buy a phone"), "smartphone")
+        self.assertEqual(self.catalogue.detect_category("Suggest a gaming laptop"), "laptop")
+        self.assertEqual(self.catalogue.detect_category("Need wireless headphones"), "headphones")
+        self.assertEqual(self.catalogue.detect_category("Looking for a smartwatch"), "smartwatch")
+
+    def test_parses_indian_budget_formats(self):
+        self.assertEqual(self.catalogue.parse_budget("phone under ₹15,000"), 15000)
+        self.assertEqual(self.catalogue.parse_budget("15k ke andar"), 15000)
+        self.assertEqual(self.catalogue.parse_budget("my budget is 60000"), 60000)
+        self.assertEqual(self.catalogue.parse_budget("1.2 lakh"), 120000)
+
+    def test_product_search_obeys_category_budget_and_limit(self):
+        products = self.catalogue.search(
+            category="laptop", budget_max=60000, use_case="gaming", limit=3
+        )
+        self.assertLessEqual(len(products), 3)
+        self.assertTrue(products)
+        self.assertTrue(all(item["category"] == "laptop" for item in products))
+        self.assertTrue(all(item["price_inr"] <= 60000 for item in products))
+
+    def test_text_chat_collects_requirements_and_recommends_phone(self):
+        reply, session = self.agent.respond(
+            "I need a smartphone under ₹15,000", self.session
+        )
+        self.assertIn("camera", reply.lower())
+        reply, session = self.agent.respond("Camera is important", session)
+        self.assertIn("brand", reply.lower())
+        reply, session = self.agent.respond("Samsung", session)
+        self.assertIn("matching options", reply.lower())
+        self.assertTrue(session["shopping"]["recommendations"])
+        self.assertTrue(
+            all(p["price_inr"] <= 15000 for p in session["shopping"]["recommendations"])
+        )
+
+    def test_text_chat_recommends_gaming_laptop_within_budget(self):
+        _, session = self.agent.respond(
+            "I want a gaming laptop under ₹60,000", self.session
+        )
+        reply, session = self.agent.respond("Gaming", session)
+        self.assertIn("brand", reply.lower())
+        reply, session = self.agent.respond("Any brand", session)
+        self.assertIn("matching options", reply.lower())
+        self.assertTrue(session["shopping"]["recommendations"])
+        self.assertTrue(
+            all(p["price_inr"] <= 60000 for p in session["shopping"]["recommendations"])
+        )
+
+    def test_selected_product_requires_separate_confirmation(self):
+        _, session = self.agent.respond(
+            "I need a phone under ₹15,000 for camera", self.session
+        )
+        _, session = self.agent.respond("Any brand", session)
+        self.assertTrue(session["shopping"]["recommendations"])
+        reply, session = self.agent.respond("option 1", session)
+        self.assertTrue(session["shopping"]["awaiting_confirmation"])
+        self.assertIn("shall i place", reply.lower())
+        self.assertNotIn("demo_order_to_create", session)
+
+        reply, session = self.agent.respond("yes", session)
+        self.assertIn("simulated order", reply.lower())
+        self.assertIn("demo_order_to_create", session)
+        self.assertEqual(
+            session["demo_order_to_create"]["product"]["id"],
+            session["shopping"]["selected_product"]["id"],
+        )
+
+    def test_brand_no_match_falls_back_to_other_brands(self):
+        _, session = self.agent.respond(
+            "I need a phone under ₹10,000 for battery", self.session
+        )
+        reply, session = self.agent.respond("Apple", session)
+        self.assertIn("brand", reply.lower())
+        reply, session = self.agent.respond("Samsung", session)
+        self.assertTrue(
+            session["shopping"]["recommendations"]
+            or "couldn't find" in reply.lower()
+        )
+
+
+class DemoOrderTests(unittest.TestCase):
+    def test_create_demo_order_and_update_to_delivered(self):
+        with tempfile.TemporaryDirectory() as directory:
+            crm = CRM(Path(directory) / "orders.db")
+            catalogue = ShoppingCatalogue()
+            product = catalogue.get("phone-samsung-a")
+            self.assertIsNotNone(product)
+            order = crm.create_demo_order(product=product, quantity=2)
+            self.assertTrue(order["order_ref"].startswith("AAH-"))
+            self.assertEqual(order["status"], "Pending")
+            self.assertEqual(order["quantity"], 2)
+            self.assertEqual(order["total_price"], product["price_inr"] * 2)
+            self.assertEqual(crm.demo_order_count(), 1)
+
+            crm.update_demo_order_status(order["order_ref"], "Delivered")
+            updated = crm.get_demo_order(order["order_ref"])
+            self.assertEqual(updated["status"], "Delivered")
+            self.assertEqual(crm.recent_demo_orders()[0][0], order["order_ref"])
+
+    def test_demo_order_idempotency_prevents_duplicate(self):
+        with tempfile.TemporaryDirectory() as directory:
+            crm = CRM(Path(directory) / "orders.db")
+            product = ShoppingCatalogue().get("laptop-hp-victus")
+            first = crm.create_demo_order(
+                product=product, idempotency_key="session-1:laptop-hp-victus"
+            )
+            second = crm.create_demo_order(
+                product=product, idempotency_key="session-1:laptop-hp-victus"
+            )
+            self.assertEqual(first["id"], second["id"])
+            self.assertEqual(crm.demo_order_count(), 1)
+
+    def test_invalid_quantity_is_rejected(self):
+        with tempfile.TemporaryDirectory() as directory:
+            crm = CRM(Path(directory) / "orders.db")
+            product = ShoppingCatalogue().get("phone-samsung-a")
+            with self.assertRaisesRegex(ValueError, "quantity"):
+                crm.create_demo_order(product=product, quantity=0)
+
 
 
 if __name__ == "__main__":
