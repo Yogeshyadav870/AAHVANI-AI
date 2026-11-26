@@ -1,37 +1,29 @@
-# AAHVANI AI — Sales & Service Appointment Workflow
+# AAHVANI AI — Shopping Workflow
 
-```mermaid
+~~~mermaid
 flowchart TD
     A["Customer"] --> B{"Voice or Text"}
-    B --> C["WebRTC + FastRTC"]
-    B --> D["Gradio Chat"]
-    C --> E["Gemini Live API"]
-    D --> F["AAHVANI Python Agent"]
-    E --> G["Conversation & Transcription"]
-    F --> G
+    B --> C["Unified Gradio Chat"]
+    C --> D["Gemini Live API or Text Fallback"]
+    D --> E["Understand product category and buying intent"]
+    E --> F["Ask missing preferences: budget, use case, brand"]
+    F --> G["Python Shopping Catalogue"]
+    G --> H["Filter by category, budget and brand"]
+    H --> I["Rank by use-case fit"]
+    I --> J["Show up to 3 matching products"]
+    J --> K["Customer selects an option"]
+    K --> L["Read back product and demo price"]
+    L --> M["Ask explicit order confirmation"]
+    M --> N{"Customer confirms?"}
+    N -->|No| O["Keep order unplaced"]
+    N -->|Yes| P["Gemini Function Call / Python Order Tool"]
+    P --> Q["Validate selected product and confirmation"]
+    Q --> R[("SQLite Demo Orders")]
+    R --> S["Order success receipt + AAH reference"]
+    R --> T["Order History and Tracking"]
+    T --> U["Pending → Processing → Shipped → Delivered"]
+~~~
 
-    G --> H{"Customer intent"}
-    H -->|CRM sales enquiry| I["Knowledge Base + Lead Discovery"]
-    I --> J["BANT Lead Scoring"]
-    J --> K["Lead Record"]
-    K --> M[("SQLite CRM")]
+**Current implementation:** The same shopping journey works through text fallback and Gemini Live voice/text. The local product catalogue contains illustrative demo listings across ten categories. Python performs filtering/ranking and stores simulated orders. Live Gemini function tools search products, select a product, create a demo order after explicit confirmation and look up an order status.
 
-    H -->|Service appointment| N["Collect service, provider, date, time and contact"]
-    N --> O["Read back details"]
-    O --> P["Customer explicitly confirms"]
-    P --> Q["Gemini Function Call"]
-    Q --> R["Python validates and saves request"]
-    R --> S["Service Appointment Record"]
-    S --> M
-
-    M --> T["CRM Dashboard"]
-    T --> U["Appointment Summary"]
-    S --> V["Pending provider confirmation"]
-    V --> W["Provider confirms out of band"]
-    W --> X["Operator updates status + reference"]
-    X --> T
-```
-
-**Appointment voice flow:** Customer speaks → Gemini Live understands the request → asks for missing details → reads back the appointment → waits for explicit confirmation → calls the Python booking function → saves the request and customer data in SQLite → updates the CRM table and call summary.
-
-**Current implementation boundary:** Gemini can create a structured appointment request for Jalandhar or another city selected by the customer. The request starts as **Pending provider confirmation**. This release does not yet include a live provider directory or external provider/calendar APIs, so it cannot verify availability or claim a real-world appointment is confirmed. An operator may update the status after receiving confirmation from the provider.
+**Boundary:** The system does not connect to live retailers, check live inventory, collect payments or create real shipments. Order statuses are simulated in the local dashboard.
