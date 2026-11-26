@@ -37,7 +37,7 @@ AAHVANI searches the local catalogue and displays up to three matching products 
 - Key specifications.
 - A short reason the option fits the customer's requirements.
 
-Explain that the recommendation engine is deterministic Python filtering/ranking over a curated JSON catalogue. Gemini handles the natural conversation and invokes the server-side search tool in Live mode.
+Explain that the recommendation engine is deterministic Python filtering/ranking over a curated JSON catalogue. Gemini handles the natural conversation in both Text Chat and Live Speaking, invoking server-side catalogue and order tools.
 
 ### 3. Select and confirm
 
@@ -69,7 +69,7 @@ AAHVANI should retrieve laptop options priced within the stated demo budget, sho
 
 ## Voice and text behaviour
 
-Text Chat and Live Speaking are separate tabs. Text Chat uses the local deterministic shopping workflow. In Live Speaking, start the FastRTC microphone session; AAHVANI greets the customer and listens for speech. The transcript is shown in the Live Speaking chat history and Gemini's audio response plays automatically. Use headphones to reduce echo.
+Text Chat and Live Speaking are separate tabs. Text Chat uses a stateful Gemini chat session with catalogue, product selection, simulated checkout and order-tracking tools. In Live Speaking, start the FastRTC microphone session; AAHVANI greets the customer and listens for speech. The transcript is shown in the Live Speaking chat history and Gemini's audio response plays automatically. Use headphones to reduce echo.
 
 If Live Voice is not configured, the dashboard provides a text-only fallback with the same product catalogue, selection workflow and SQLite order functions.
 
