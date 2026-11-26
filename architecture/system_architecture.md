@@ -13,6 +13,9 @@ flowchart TD
     UI <-->|Speak Up: WebRTC audio| Live[FastRTC live handler]
     Live <-->|Bidirectional audio| GeminiLive[Gemini Live API]
     Live -->|Input transcription| Agent
+    Live -->|Function call: save_appointment_request| BookingTool[Python booking tool]
+    BookingTool --> ServiceAppointments[(SQLite service_appointments)]
+    ServiceAppointments --> Dashboard
     Agent <--> Memory[Gradio session state]
     Agent --> Retriever[Custom lexical FAQ retriever]
     Retriever --> KB[Local Markdown product FAQ]
@@ -33,7 +36,9 @@ flowchart TD
 
 The dashboard includes a Speak Up control backed by FastRTC/WebRTC. Each connection gets a dedicated asynchronous handler and Gemini Live session. The browser streams microphone audio to the Python server; the server forwards mono PCM16 audio at 16 kHz to Gemini Live. The model returns native PCM16 audio at 24 kHz, which FastRTC streams back to the browser. Gemini Live handles voice activity and can interrupt its generated speech when the customer starts speaking.
 
-Input and output audio transcription are enabled. The input transcript is passed through the existing Python lead extractor, BANT-inspired scoring and keyword sentiment logic. Captured prospect data is persisted to the same SQLite CRM and updates the existing dashboard fields and metrics. The live session's transcript is also reflected in the Gradio conversation panel. Demo booking remains an explicit user action in the existing dashboard so the model cannot claim a sample appointment has been booked before confirmation.
+Input and output audio transcription are enabled. Customer transcripts are passed through the Python lead extractor and CRM. The LiveConnectConfig also declares a server-side `save_appointment_request` function. When the customer requests an appointment, Gemini gathers the service category, service, provider preference, city, requested date/time and contact details, reads them back, and waits for explicit confirmation. The server independently verifies that the previous assistant turn asked for confirmation and that the customer's latest utterance is affirmative before writing anything. It then saves the customer lead and a row in SQLite `service_appointments`, sends the function result back to Gemini, and lets Gemini speak the request reference and status. The dashboard displays the new request and the session summary includes its details.
+
+A newly saved service appointment starts as **Pending provider confirmation**. This release has no live Jalandhar provider directory, provider availability search, provider notification, external calendar reservation or automatic provider confirmation. An operator can update the CRM status after contacting the provider and entering a confirmation note/reference. This prevents a preferred time from being misrepresented as a confirmed appointment.
 
 The Live API key is read from the server-side `.env` setting `GEMINI_API_KEY`; it is never embedded in browser code. The live model and voice can be changed using `GEMINI_LIVE_MODEL` and `GEMINI_LIVE_VOICE`. Current defaults are `gemini-3.8-live` and `Kore`.
 
@@ -45,8 +50,9 @@ The Live API key is read from the server-side `.env` setting `GEMINI_API_KEY`; i
 4. The local Markdown FAQ is divided into sections. A custom term-frequency/inverse-document-frequency-style lexical scoring function ranks relevant sections and returns the top matches.
 5. If Gemini is configured, the retrieved context can be supplied to the response-generation prompt. The default demo has no Gemini key configured and therefore uses deterministic local response logic.
 6. The agent calculates a BANT-inspired score and a simple keyword-based sentiment signal.
-7. The lead is saved to SQLite. A user can select a sample demo slot; the application validates that a contact method exists and persists the appointment linked to that lead.
-8. The summary function creates a structured summary from the current session. SQL queries update the total-lead, qualified-lead and booked-demo counters.
+7. The lead is saved to SQLite. A user can select a sample demo slot; the application validates that a contact method exists and persists the sample appointment linked to that lead.
+8. In Live Voice Mode, Gemini can call `save_appointment_request` after explicit customer confirmation. Python validates the required fields and confirmation state, saves a service appointment request linked to the customer lead, and returns the request status/reference to Gemini.
+9. Service appointment requests appear in the CRM table. The structured summary includes appointment category, service, provider preference, city, requested date/time and status. SQL queries update the lead and demo-booking counters.
 9. For a batch voice turn, Edge TTS (online) converts the generated reply into an MP3 file. In Live Voice Mode, Gemini Live generates native streaming audio directly.
 
 ## 3. Important implementation boundaries
@@ -55,7 +61,8 @@ The Live API key is read from the server-side `.env` setting `GEMINI_API_KEY`; i
 - **Retrieval:** This is local lexical FAQ retrieval, not embedding-based semantic search or a vector database. The optional Gemini path can use retrieved text as generation context.
 - **Lead scoring:** The score is a transparent heuristic, not a trained conversion prediction model.
 - **Sentiment:** The current classifier is keyword-based, not a trained sentiment model.
-- **Voice:** The optional Live Voice Mode supports browser-based bidirectional audio, turn-taking and interruptions. It is not a PSTN phone connection. The batch Faster-Whisper + Edge TTS path remains available.
+- **Voice:** The optional Live Voice Mode supports browser-based bidirectional audio, turn-taking, interruptions and server-side appointment function calling. It is not a PSTN phone connection. The batch Faster-Whisper + Edge TTS path remains available.
+- **Appointment booking:** The current voice tool stores an appointment request as pending provider confirmation. It does not search providers, check live availability, call providers, or reserve external calendars.
 - **Multilingual:** Whisper supports multilingual speech recognition, but the complete multilingual experience, including language-specific response generation and TTS voice selection, has not been validated in this MVP.
 - **Integrations:** The demo uses fictional Northstar CRM content and sample slots. It is not connected to an external CRM or real calendar. The live audio connection is browser WebRTC, not a phone provider.
 
