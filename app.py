@@ -18,6 +18,19 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
+try:
+    from google import genai
+    from google.genai import types as genai_types
+    GEMINI_TEXT_AVAILABLE = True
+    GEMINI_TEXT_IMPORT_ERROR = ""
+except ImportError as gemini_import_error:
+    genai = None
+    genai_types = None
+    GEMINI_TEXT_AVAILABLE = False
+    GEMINI_TEXT_IMPORT_ERROR = str(gemini_import_error)
+
+_GEMINI_TEXT_CLIENT = None
+
 from agent import AahvaniAgent
 from crm import CRM
 from shopping import ShoppingAgent, ShoppingCatalogue
@@ -47,6 +60,291 @@ def initial_state():
     session = shopping_agent.new_session()
     session["session_id"] = str(uuid.uuid4())
     return session
+
+
+def _get_gemini_text_client():
+    global _GEMINI_TEXT_CLIENT
+    api_key = os.getenv("GEMINI_API_KEY", "").strip()
+    if not api_key:
+        raise RuntimeError("GEMINI_API_KEY is missing from the local .env file.")
+    if not GEMINI_TEXT_AVAILABLE:
+        raise RuntimeError(f"Gemini text dependencies are unavailable: {GEMINI_TEXT_IMPORT_ERROR}")
+    if _GEMINI_TEXT_CLIENT is None:
+        _GEMINI_TEXT_CLIENT = genai.Client(api_key=api_key)
+    return _GEMINI_TEXT_CLIENT
+
+
+def gemini_shopping_reply(message, session):
+    """Run a stateful Gemini text conversation with safe catalogue and order tools."""
+    session = session or initial_state()
+    shopping = session.setdefault("shopping", shopping_agent.new_session()["shopping"])
+    session.setdefault("gemini_history", [])
+    session["_text_tool_events"] = []
+    session["_last_text_message"] = str(message or "").strip()
+
+    # Extract clear facts from each turn before asking Gemini to continue the
+    # conversation. This preserves budget/category/brand when details arrive separately.
+    requested_category = shopping_catalogue.detect_category(message)
+    if requested_category and requested_category != shopping.get("category"):
+        if not shopping.get("category") or shopping_agent.CATEGORY_SWITCH.search(str(message or "")):
+            shopping.update({
+                "category": requested_category,
+                "budget_max": None,
+                "brand": "",
+                "use_case": "",
+                "recommendations": [],
+                "selected_product": None,
+                "awaiting_selection": False,
+                "awaiting_confirmation": False,
+                "order": shopping.get("order"),
+            })
+
+    parsed_budget = shopping_catalogue.parse_budget(message)
+    if parsed_budget:
+        shopping["budget_max"] = parsed_budget
+    parsed_brand = shopping_catalogue.detect_brand(message)
+    if parsed_brand:
+        shopping["brand"] = parsed_brand
+    parsed_use_case = shopping_catalogue.detect_use_case(message)
+    if parsed_use_case:
+        shopping["use_case"] = parsed_use_case
+
+    system_instruction = """
+You are AAHVANI AI, a friendly and capable personal shopping assistant for customers in India.
+Use natural, helpful English, Hindi or Hinglish matching the customer's language. Be conversational,
+remember details already provided, and ask only one useful follow-up question at a time.
+
+SHOPPING FLOW
+Help customers choose from the local AAHVANI demo catalogue. Supported categories include smartphones,
+laptops, headphones, tablets, smartwatches, monitors, cameras, home appliances, speakers, gaming consoles,
+televisions, printers, footwear, backpacks and furniture.
+Remember category, maximum budget, preferred brand and primary use across separate messages. Do not ask
+again for any detail already supplied. For a smartphone, ask whether camera, gaming, battery life or
+balanced everyday use matters most. For a laptop, ask about gaming, coding, studying, office work or editing.
+Ask the relevant category-specific question for other products.
+If the customer has not stated a budget, ask for it. If they have not stated a main use, ask one useful
+question. If brand preference is unknown, ask whether they prefer a brand or want all brands compared.
+A customer may say "phone", "mobile" or "smartphone" to mean a smartphone.
+
+CATALOGUE
+Use search_products only after you know the category, budget and enough about primary use. Use brand="Any"
+when the customer has no brand preference. Recommend only the products returned by that tool and preserve
+their exact names, brands and INR prices. Never invent a product, specification, availability, discount or price.
+Make it clear that listings and prices are illustrative demo catalogue data, not live retailer offers.
+The recommendation panel is updated by the application when this tool runs.
+
+SELECTION AND CHECKOUT
+When a customer chooses an option, call select_product with the exact product ID from the latest results.
+Read back the exact product name, brand and price. Ask explicitly: "Shall I place this simulated order?"
+Never call place_demo_order on the same turn as select_product. Only call place_demo_order after the
+customer gives a clear affirmative answer in a separate message following that confirmation question.
+The application independently validates that separate confirmation. Never ask for payment credentials.
+Orders are simulated only; no payment is taken and no real shipment is made.
+
+ORDER TRACKING
+Use get_demo_order_status when the customer gives an AAH-XXXXXXXX order reference. Report only the returned
+status and be transparent that it is a simulated order.
+""".strip()
+
+    shopping_state = session["shopping"]
+
+    def search_products(category: str, budget_max: int = 0, brand: str = "Any",
+                        primary_use: str = "everyday") -> dict:
+        """Search AAHVANI's demo catalogue and return up to three products.
+        
+        Args:
+            category: Product category such as smartphone, laptop, television or footwear.
+            budget_max: Maximum total price in Indian rupees.
+            brand: Preferred manufacturer, or Any if there is no preference.
+            primary_use: Main use such as camera, gaming, battery, coding, study, work or everyday.
+        """
+        detected_category = shopping_catalogue.detect_category(category) or str(category or "").strip().lower()
+        if detected_category not in {item[1] for item in ShoppingCatalogue.ALIASES.items()}:
+            # The set below is a normalized set of valid catalogue categories.
+            valid_categories = set(ShoppingCatalogue.ALIASES.keys())
+            if detected_category not in valid_categories:
+                return {"ok": False, "needs_clarification": True, "message": "Ask the customer which product category they want."}
+        selected_category = detected_category
+        budget = int(budget_max or shopping_state.get("budget_max") or 0)
+        if budget <= 0:
+            return {"ok": False, "needs_clarification": True, "message": "Ask the customer for their maximum budget before searching."}
+        chosen_brand = shopping_catalogue.detect_brand(brand) or str(brand or "Any").strip()
+        if not chosen_brand:
+            chosen_brand = "Any"
+        chosen_use = shopping_catalogue.detect_use_case(primary_use) or str(primary_use or "everyday").strip().lower()
+        products = shopping_catalogue.search(
+            category=selected_category,
+            budget_max=budget,
+            brand=chosen_brand,
+            use_case=chosen_use,
+            limit=3,
+        )
+        brand_note = ""
+        if not products and chosen_brand.lower() != "any":
+            products = shopping_catalogue.search(
+                category=selected_category,
+                budget_max=budget,
+                use_case=chosen_use,
+                limit=3,
+            )
+            if products:
+                brand_note = f"No {chosen_brand} match was found within the budget; alternatives are included."
+        shopping_state.update({
+            "category": selected_category,
+            "budget_max": budget,
+            "brand": chosen_brand,
+            "use_case": chosen_use,
+            "recommendations": products,
+            "awaiting_selection": bool(products),
+            "selected_product": None,
+            "awaiting_confirmation": False,
+        })
+        session["_text_tool_events"].append("search_products")
+        return {
+            "ok": bool(products),
+            "count": len(products),
+            "brand_note": brand_note,
+            "products": [{
+                "id": product["id"],
+                "title": product["title"],
+                "brand": product["brand"],
+                "price_inr": int(product["price_inr"]),
+                "specs": product.get("specs", []),
+                "recommendation_reason": product.get("recommendation_reason", ""),
+            } for product in products],
+            "note": "Illustrative demo catalogue only; not live retailer stock or pricing.",
+        }
+
+    def select_product(product_id: str) -> dict:
+        """Select one product from the latest recommendations, without placing an order.
+        
+        Args:
+            product_id: Exact product ID returned by search_products.
+        """
+        product = next(
+            (item for item in shopping_state.get("recommendations", [])
+             if item.get("id") == str(product_id).strip()),
+            None,
+        )
+        if product is None:
+            return {"ok": False, "error": "That product is not in the latest recommendations. Search again first."}
+        shopping_state["selected_product"] = product
+        shopping_state["awaiting_selection"] = False
+        shopping_state["awaiting_confirmation"] = True
+        session["text_confirmation_ready"] = False
+        session["_text_tool_events"].append("select_product")
+        return {
+            "ok": True,
+            "product_id": product["id"],
+            "title": product["title"],
+            "brand": product["brand"],
+            "price_inr": int(product["price_inr"]),
+            "next_step": "Read back the exact product and price, then ask the customer to confirm in a separate message. Do not place the order now.",
+        }
+
+    def place_demo_order(product_id: str, quantity: int = 1) -> dict:
+        """Create a simulated order only after the separate confirmation message.
+        
+        Args:
+            product_id: Exact ID of the selected product.
+            quantity: Number of items to order, from 1 to 10.
+        """
+        affirmative = bool(ShoppingAgent.YES.fullmatch(session.get("_last_text_message", "").strip().lower()))
+        if not shopping_state.get("awaiting_confirmation") or not session.get("text_confirmation_ready") or not affirmative:
+            return {
+                "ok": False,
+                "needs_confirmation": True,
+                "error": "The customer has not confirmed this selected item in a separate message after the confirmation question. Ask for a clear yes or no; do not create an order.",
+            }
+        selected = shopping_state.get("selected_product") or {}
+        if not selected or selected.get("id") != str(product_id).strip():
+            return {"ok": False, "error": "The requested product does not match the selected product. Confirm the correct item first."}
+        try:
+            record = crm.create_demo_order(
+                product=selected,
+                quantity=max(1, min(10, int(quantity or 1))),
+                customer_name="",
+                idempotency_key=session.setdefault("session_id", str(uuid.uuid4())) + ":" + selected["id"],
+            )
+        except Exception as exc:
+            logger.exception("Text Chat could not create simulated order")
+            return {"ok": False, "error": f"Could not create simulated order: {type(exc).__name__}: {exc}"}
+        shopping_state["order"] = record
+        shopping_state["awaiting_confirmation"] = False
+        shopping_state["awaiting_selection"] = False
+        session["text_confirmation_ready"] = False
+        session["_text_tool_events"].append("place_demo_order")
+        return {
+            "ok": True,
+            "order_ref": record["order_ref"],
+            "product_title": record["product_title"],
+            "brand": record["brand"],
+            "quantity": record["quantity"],
+            "total_price": int(record["total_price"]),
+            "status": record["status"],
+            "simulation_only": True,
+            "message": "Simulated order only. No payment or shipment exists.",
+        }
+
+    def get_demo_order_status(order_reference: str) -> dict:
+        """Look up the status of an existing simulated AAHVANI order.
+        
+        Args:
+            order_reference: Order reference such as AAH-12AB34CD.
+        """
+        record = crm.get_demo_order(str(order_reference or "").strip())
+        if not record:
+            return {"ok": False, "error": "That order reference was not found in demo order history."}
+        shopping_state["order"] = record
+        session["_text_tool_events"].append("get_demo_order_status")
+        return {
+            "ok": True,
+            "order_reference": record["order_ref"],
+            "product_title": record["product_title"],
+            "total_price": int(record["total_price"]),
+            "status": record["status"],
+            "simulation_only": True,
+        }
+
+    try:
+        client = _get_gemini_text_client()
+        model = os.getenv("GEMINI_MODEL", "gemini-2.5-flash").strip() or "gemini-2.5-flash"
+        config = genai_types.GenerateContentConfig(
+            system_instruction=system_instruction,
+            tools=[search_products, select_product, place_demo_order, get_demo_order_status],
+            temperature=0.35,
+        )
+        chat = client.chats.create(
+            model=model,
+            config=config,
+            history=session.get("gemini_history", []),
+        )
+        response = chat.send_message(str(message or "").strip())
+        session["gemini_history"] = chat.history
+        answer = (getattr(response, "text", None) or "").strip()
+
+        events = list(session.get("_text_tool_events", []))
+        if "select_product" in events and shopping_state.get("awaiting_confirmation"):
+            confirmation_phrases = (
+                "shall i place", "should i place", "would you like me to place",
+                "would you like me to order", "shall i order",
+            )
+            if not any(phrase in answer.lower() for phrase in confirmation_phrases):
+                selected = shopping_state["selected_product"]
+                answer = (
+                    f"You selected **{selected['title']}** by {selected['brand']} for "
+                    f"**₹{int(selected['price_inr']):,}**. This is a simulated order only. "
+                    "Shall I place this demo order? Please reply yes or no."
+                )
+            session["text_confirmation_ready"] = True
+
+        if not answer:
+            answer = "I understood your message, but I could not produce a text response. Please try once more."
+        session["_text_tool_events"] = []
+        return answer
+    except Exception:
+        logger.exception("Gemini Text Chat request failed")
+        raise
 
 
 def shopping_chat(message, history, session):
@@ -81,7 +379,18 @@ def shopping_chat(message, history, session):
             "",
         )
 
-    answer, session = shopping_agent.respond(message, session)
+    if os.getenv("GEMINI_API_KEY", "").strip() and GEMINI_TEXT_AVAILABLE:
+        try:
+            answer = gemini_shopping_reply(message, session)
+        except Exception as exc:
+            answer = (
+                "I'm having trouble reaching Gemini right now, so I haven't changed your order or "
+                "placed anything. Please try sending your message again. "
+                f"Connection detail: {type(exc).__name__}: {exc}"
+            )
+    else:
+        answer, session = shopping_agent.respond(message, session)
+
     order_request = session.pop("demo_order_to_create", None)
 
     if order_request:
@@ -722,6 +1031,34 @@ label, .label-wrap span { color: #6e6052 !important; font-weight: 700 !important
     background: #fffdf9 !important;
     border: 1px solid #e7d8c8 !important;
 }
+
+/* Gradio assigns the .user class to the user's message bubble. */
+#text-shopping-chat .user,
+#text-shopping-chat .user *,
+#live-shopping-chat .user,
+#live-shopping-chat .user *,
+#text-shopping-chat [data-testid="user"],
+#text-shopping-chat [data-testid="user"] *,
+#live-shopping-chat [data-testid="user"],
+#live-shopping-chat [data-testid="user"] * {
+    background-color: #ead9c3 !important;
+    color: #30251b !important;
+    border-color: #d9c4a8 !important;
+}
+#text-shopping-chat .bot,
+#text-shopping-chat .bot *,
+#live-shopping-chat .bot,
+#live-shopping-chat .bot *,
+#text-shopping-chat [data-testid="assistant"],
+#text-shopping-chat [data-testid="assistant"] *,
+#live-shopping-chat [data-testid="assistant"],
+#live-shopping-chat [data-testid="assistant"] * {
+    color: #30251b !important;
+}
+#text-shopping-chat {
+    --color-accent-soft: #ead9c3 !important;
+    --body-text-color: #30251b !important;
+}
 #shopping-recommendations, #order-confirmation {
     color: #30251b !important;
     line-height: 1.65 !important;
@@ -830,8 +1167,8 @@ with gr.Blocks(
                             elem_id="shopping-send",
                         )
                     gr.Markdown(
-                        "Text Chat uses the local shopping assistant and demo catalogue. "
-                        "It remains available even when Live Voice is disconnected.",
+                        "Gemini-powered text conversation with the AAHVANI demo catalogue. "
+                        "Your text chat and Live Speaking sessions are separate.",
                         elem_classes=["status-note"],
                     )
 
