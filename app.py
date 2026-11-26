@@ -621,6 +621,16 @@ label, .label-wrap span { color: #6e6052 !important; font-weight: 700 !important
 #aahvani-live-webrtc .input-container button[aria-label="unmute audio"] {
     display: none !important;
 }
+#aahvani-live-webrtc .input-container button[aria-label="stop stream"] {
+    display: none !important;
+}
+#end-live-session {
+    min-height: 46px !important;
+    margin-top: 10px !important;
+    border: 1px solid #e1d1bf !important;
+    background: linear-gradient(135deg, #fffdf9, #f5ede3) !important;
+    color: #654719 !important;
+}
 
 #conversation-mode-tabs { margin-top: 8px !important; }
 #conversation-mode-tabs [role="tab"] {
@@ -631,44 +641,62 @@ label, .label-wrap span { color: #6e6052 !important; font-weight: 700 !important
 #shopping-send { min-height: 56px !important; min-width: 92px !important; }
 #live-status { margin-top: 10px !important; }
 #speech-output { border-radius: 14px !important; }
-#crm-table {
+/* Force the shopping order-history Dataframe to stay in the warm light palette.
+   Gradio's Dataframe can otherwise inherit a dark header despite the page theme. */
+#demo-orders-table {
     color-scheme: light !important;
-    border-radius: 14px;
-    overflow: hidden;
+    border-radius: 14px !important;
+    overflow: hidden !important;
     background: #fffdf9 !important;
     color: #30251b !important;
+    --body-background-fill: #fffdf9 !important;
+    --background-fill-primary: #fffdf9 !important;
+    --background-fill-secondary: #f8f2ea !important;
+    --block-background-fill: #fffdf9 !important;
+    --block-border-color: #e7d8c8 !important;
+    --border-color-primary: #e7d8c8 !important;
+    --table-header-background-fill: #efe1cf !important;
+    --table-header-text-color: #563d20 !important;
+    --table-even-background-fill: #f8f2ea !important;
+    --table-odd-background-fill: #fffdf9 !important;
 }
-#crm-table .table-wrap,
-#crm-table .dataframe,
-#crm-table table,
-#crm-table thead,
-#crm-table tbody,
-#crm-table tr,
-#crm-table th,
-#crm-table td,
-#crm-table [role="grid"],
-#crm-table [role="row"],
-#crm-table [role="gridcell"],
-#crm-table [role="columnheader"] {
+#demo-orders-table .table-wrap,
+#demo-orders-table .dataframe,
+#demo-orders-table table,
+#demo-orders-table thead,
+#demo-orders-table tbody,
+#demo-orders-table tr,
+#demo-orders-table th,
+#demo-orders-table td,
+#demo-orders-table [role="grid"],
+#demo-orders-table [role="rowgroup"],
+#demo-orders-table [role="row"],
+#demo-orders-table [role="gridcell"],
+#demo-orders-table [role="columnheader"] {
+    color-scheme: light !important;
     background-color: #fffdf9 !important;
     color: #30251b !important;
     border-color: #e7d8c8 !important;
 }
-#crm-table thead th,
-#crm-table [role="columnheader"] {
+#demo-orders-table thead,
+#demo-orders-table thead tr,
+#demo-orders-table thead th,
+#demo-orders-table [role="rowgroup"]:first-child,
+#demo-orders-table [role="rowgroup"]:first-child [role="row"],
+#demo-orders-table [role="columnheader"] {
     background-color: #efe1cf !important;
     color: #563d20 !important;
-    font-weight: 750 !important;
+    font-weight: 800 !important;
 }
-#crm-table tbody tr:nth-child(even) td,
-#crm-table tbody [role="row"]:nth-child(even) [role="gridcell"] {
+#demo-orders-table tbody tr:nth-child(even) td,
+#demo-orders-table tbody [role="row"]:nth-child(even) [role="gridcell"] {
     background-color: #f8f2ea !important;
 }
-#crm-table tbody tr:hover td,
-#crm-table tbody [role="row"]:hover [role="gridcell"] {
+#demo-orders-table tbody tr:hover td,
+#demo-orders-table tbody [role="row"]:hover [role="gridcell"] {
     background-color: #f1e5d7 !important;
 }
-#crm-table input {
+#demo-orders-table input {
     background: #fffdf9 !important;
     color: #30251b !important;
 }
@@ -779,7 +807,7 @@ with gr.Blocks(
             """)
 
             with gr.Tabs(elem_id="conversation-mode-tabs"):
-                with gr.Tab("Text Chat"):
+                with gr.Tab("Text Chat") as text_chat_tab:
                     text_chatbot = gr.Chatbot(
                         value=[{"role": "assistant", "content": "Hi, I'm AAH-vuh-nee AI. What are you looking to buy today?"}],
                         height=430,
@@ -844,6 +872,11 @@ with gr.Blocks(
                             "AAHVANI's spoken reply will play automatically.",
                             elem_classes=["live-control-hint"],
                         )
+                        end_live_button = gr.Button(
+                            "End Live & Return to Text Chat",
+                            variant="secondary",
+                            elem_id="end-live-session",
+                        )
                         live_handler = AahvaniLiveHandler()
                         live_audio.stream(
                             live_handler,
@@ -855,6 +888,7 @@ with gr.Blocks(
                         )
                     else:
                         live_audio = None
+                        end_live_button = None
                         if not LIVE_VOICE_AVAILABLE:
                             live_status = gr.Markdown(
                                 f"Live Voice dependencies are unavailable: {LIVE_VOICE_IMPORT_ERROR}. "
@@ -944,6 +978,49 @@ with gr.Blocks(
                     queue=False,
                     show_progress="hidden",
                 )
+
+    if live_audio is not None:
+        async def stop_live_session(webrtc_value):
+            """Ask FastRTC to close the active peer connection when leaving Live Speaking."""
+            if isinstance(webrtc_value, dict):
+                webrtc_id = str(webrtc_value.get("webrtc_id") or "").strip()
+            else:
+                webrtc_id = str(getattr(webrtc_value, "webrtc_id", "") or "").strip()
+
+            if not webrtc_id or webrtc_id not in live_audio.connections:
+                return "Live Speaking is disconnected. Text Chat is ready."
+
+            try:
+                await live_audio.update_connection(webrtc_value, "closed")
+                return "Live session ended. Your microphone connection is closing; you can continue in Text Chat."
+            except Exception as exc:
+                logging.getLogger(__name__).exception("Could not stop AAHVANI Live session")
+                return f"Could not close the Live session: {type(exc).__name__}: {exc}"
+
+        # Switching tabs also requests a clean Live disconnect.
+        text_chat_tab.select(
+            stop_live_session,
+            inputs=[live_audio],
+            outputs=[live_status],
+            queue=False,
+            show_progress="hidden",
+        )
+
+        # The dedicated button returns the user to Text Chat. The tab-selection
+        # event above performs the server-side FastRTC disconnect.
+        end_live_button.click(
+            fn=None,
+            inputs=[],
+            outputs=[],
+            js="""() => {
+                const tabs = Array.from(
+                    document.querySelectorAll('#conversation-mode-tabs [role="tab"]')
+                );
+                const textTab = tabs.find((tab) => tab.textContent.trim() === 'Text Chat');
+                if (textTab) textTab.click();
+                return [];
+            }""",
+        )
 
     # Text Chat is always wired, regardless of Gemini Live availability.
     send.click(
