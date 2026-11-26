@@ -29,7 +29,9 @@ flowchart TD
 6. The agent updates the BANT-inspired lead score and keyword-based sentiment signal.
 7. The booking action writes a lead and appointment to SQLite after a contact detail is supplied.
 8. A call summary is generated from the session.
-9. Optional Edge TTS converts the latest assistant response to spoken audio.
+9. For a voice turn, the user records audio, the cached Faster-Whisper model transcribes it, and the transcript enters the same agent workflow as typed input.
+10. Edge TTS generates a spoken response for that voice turn. The user can also request speech for the latest text response.
+11. SQLite-backed dashboard queries update total-lead, qualified-lead and appointment counters.
 
 ## Production architecture for 100,000 registered users
 
