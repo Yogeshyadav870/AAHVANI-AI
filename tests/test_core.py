@@ -231,6 +231,41 @@ class CRMTests(unittest.TestCase):
             updated = crm.recent_service_appointments()[0]
             self.assertEqual(updated[7], "Confirmed")
 
+    def test_confirmed_status_requires_provider_confirmation_evidence(self):
+        with tempfile.TemporaryDirectory() as directory:
+            crm = CRM(Path(directory) / "appointments.db")
+            lead_id = crm.save_lead({"name": "Rahul", "phone": "9876543210"})
+            record = crm.create_service_appointment_request(
+                lead_id=lead_id,
+                service_category="Healthcare",
+                service_name="Dental consultation",
+                city="Jalandhar",
+                preferred_date="2026-12-04",
+                preferred_time="12:00 PM",
+                customer_name="Rahul",
+                customer_phone="9876543210",
+            )
+            with self.assertRaisesRegex(ValueError, "provider confirmation"):
+                crm.update_service_appointment_status(record["id"], "Confirmed")
+
+    def test_appointment_details_are_included_in_session_summary(self):
+        agent = AahvaniAgent(KnowledgeBase())
+        session = agent.new_session()
+        session["appointments"] = [{
+            "appointment_id": "abc12345-0000",
+            "service_category": "Healthcare",
+            "service_name": "Dental consultation",
+            "provider_name": "Provider to be selected",
+            "city": "Jalandhar",
+            "preferred_date": "2026-12-04",
+            "preferred_time": "12:00 PM",
+            "status": "Pending provider confirmation",
+        }]
+        summary = agent.summarize(session)
+        self.assertIn("Dental consultation", summary)
+        self.assertIn("Jalandhar", summary)
+        self.assertIn("Pending provider confirmation", summary)
+
     def test_save_and_book(self):
         with tempfile.TemporaryDirectory() as directory:
             crm = CRM(Path(directory) / "test.db")
