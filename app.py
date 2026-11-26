@@ -32,6 +32,8 @@ except ImportError as live_import_error:
     LIVE_VOICE_AVAILABLE = False
     LIVE_VOICE_IMPORT_ERROR = str(live_import_error)
 
+LIVE_VOICE_CONFIGURED = LIVE_VOICE_AVAILABLE and bool(os.getenv("GEMINI_API_KEY", "").strip())
+
 APP_NAME = "AAHVANI AI"
 _WHISPER_MODEL = None
 agent = AahvaniAgent()
@@ -571,13 +573,13 @@ label, .label-wrap span { color: #6e6052 !important; font-weight: 700 !important
     font-size: 12px;
     line-height: 1.5;
 }
-#aahvani-shopping-webrtc {
+#aahvani-live-webrtc {
     border: 1px solid #e8d9c9 !important;
     border-radius: 17px !important;
     background: linear-gradient(150deg, #f5ede4 0%, #f8f2eb 100%) !important;
     padding: 12px !important;
 }
-#aahvani-shopping-webrtc .input-container {
+#aahvani-live-webrtc .input-container {
     align-items: center !important;
     gap: 9px !important;
     padding: 10px 12px !important;
@@ -585,14 +587,14 @@ label, .label-wrap span { color: #6e6052 !important; font-weight: 700 !important
     border-radius: 18px !important;
     background: #fffdf9 !important;
 }
-#aahvani-shopping-webrtc .input-container textarea {
+#aahvani-live-webrtc .input-container textarea {
     min-height: 46px !important;
     border: 1px solid #e7d5c0 !important;
     border-radius: 13px !important;
     background: #fffaf3 !important;
     color: #30251b !important;
 }
-#aahvani-shopping-webrtc .input-container button {
+#aahvani-live-webrtc .input-container button {
     width: 46px !important;
     min-width: 46px !important;
     height: 46px !important;
@@ -603,15 +605,31 @@ label, .label-wrap span { color: #6e6052 !important; font-weight: 700 !important
     cursor: pointer !important;
     transition: transform .15s ease, background .15s ease, box-shadow .15s ease !important;
 }
-#aahvani-shopping-webrtc .input-container button:hover {
+#aahvani-live-webrtc .input-container button:hover {
     background: #edd7b6 !important;
     transform: translateY(-1px) !important;
     box-shadow: 0 3px 10px rgba(112, 75, 21, .16) !important;
 }
-#aahvani-shopping-webrtc .input-container button svg {
+#aahvani-live-webrtc .input-container button svg {
     width: 23px !important;
     height: 23px !important;
 }
+
+/* FastRTC's speaker mute toggle is not needed in the Live Speaking controls.
+   Playback remains enabled; this only removes the extra volume/mute button. */
+#aahvani-live-webrtc .input-container button[aria-label="mute audio"],
+#aahvani-live-webrtc .input-container button[aria-label="unmute audio"] {
+    display: none !important;
+}
+
+#conversation-mode-tabs { margin-top: 8px !important; }
+#conversation-mode-tabs [role="tab"] {
+    border-radius: 13px 13px 0 0 !important;
+    font-weight: 750 !important;
+}
+.chat-compose-row { align-items: end !important; gap: 10px !important; }
+#shopping-send { min-height: 56px !important; min-width: 92px !important; }
+#live-status { margin-top: 10px !important; }
 #speech-output { border-radius: 14px !important; }
 #crm-table {
     color-scheme: light !important;
@@ -668,11 +686,11 @@ label, .label-wrap span { color: #6e6052 !important; font-weight: 700 !important
     font-size: 12px;
     line-height: 1.5;
 }
-#shopping-chat, #shopping-message, #shopping-recommendations, #order-confirmation,
-#demo-orders-table, #aahvani-shopping-webrtc {
+#text-shopping-chat, #live-shopping-chat, #shopping-message, #shopping-recommendations, #order-confirmation,
+#demo-orders-table, #aahvani-live-webrtc {
     border-radius: 16px !important;
 }
-#shopping-chat {
+#text-shopping-chat, #live-shopping-chat {
     background: #fffdf9 !important;
     border: 1px solid #e7d8c8 !important;
 }
@@ -755,57 +773,101 @@ with gr.Blocks(
                 <div class="section-symbol">✦</div>
                 <div>
                     <h2>Chat with AAHVANI</h2>
-                    <p>Tell me what you want to buy. Type or speak in the same conversation.</p>
+                    <p>Choose Text Chat for typing or Live Speaking for a real-time voice conversation.</p>
                 </div>
             </div>
             """)
-            chatbot = gr.Chatbot(
-                value=[{"role": "assistant", "content": "Hi, I'm AAH-vuh-nee AI. What are you looking to buy today?"}],
-                height=520,
-                label="Shopping conversation",
-                type="messages",
-                elem_id="shopping-chat",
-            )
-            if LIVE_VOICE_AVAILABLE and os.getenv("GEMINI_API_KEY", "").strip():
-                live_audio = WebRTC(
-                    label="Type a message or use the microphone",
-                    mode="send-receive",
-                    modality="audio",
-                    variant="textbox",
-                    icon_button_color="#b98527",
-                    pulse_color="#d5a24d",
-                    elem_id="aahvani-shopping-webrtc",
-                )
-                live_status = gr.Markdown(
-                    "Ready. Start the live chat with the microphone, then speak or type in the same box.",
-                    elem_classes=["status-note"],
-                )
-                gr.Markdown(
-                    "The text box and microphone share one Gemini Live session and the same conversation memory. "
-                    "Use headphones for clearer voice interaction.",
-                    elem_classes=["live-control-hint"],
-                )
-                live_handler = AahvaniLiveHandler()
-                live_audio.stream(
-                    live_handler,
-                    inputs=[live_audio],
-                    outputs=[live_audio],
-                    time_limit=900,
-                    concurrency_limit=3,
-                    send_input_on="submit",
-                )
-            else:
-                message = gr.Textbox(
-                    placeholder="Try: I need a gaming laptop under ₹60,000...",
-                    label="Message AAHVANI",
-                    lines=2,
-                    elem_id="shopping-message",
-                )
-                send = gr.Button("Send message", variant="primary", elem_id="shopping-send")
-                live_status = gr.Markdown(
-                    "Text shopping is ready. Add GEMINI_API_KEY and install requirements-live.txt for live voice + typing in one box.",
-                    elem_classes=["status-note"],
-                )
+
+            with gr.Tabs(elem_id="conversation-mode-tabs"):
+                with gr.Tab("Text Chat"):
+                    text_chatbot = gr.Chatbot(
+                        value=[{"role": "assistant", "content": "Hi, I'm AAH-vuh-nee AI. What are you looking to buy today?"}],
+                        height=430,
+                        label="Text conversation",
+                        type="messages",
+                        elem_id="text-shopping-chat",
+                    )
+                    with gr.Row(elem_classes=["chat-compose-row"]):
+                        message = gr.Textbox(
+                            placeholder="Try: I need a smartphone under ₹20,000...",
+                            label="Message AAHVANI",
+                            lines=2,
+                            scale=7,
+                            elem_id="shopping-message",
+                        )
+                        send = gr.Button(
+                            "Send",
+                            variant="primary",
+                            scale=1,
+                            elem_id="shopping-send",
+                        )
+                    gr.Markdown(
+                        "Text Chat uses the local shopping assistant and demo catalogue. "
+                        "It remains available even when Live Voice is disconnected.",
+                        elem_classes=["status-note"],
+                    )
+
+                with gr.Tab("Live Speaking"):
+                    live_chatbot = gr.Chatbot(
+                        value=[{
+                            "role": "assistant",
+                            "content": "Live Speaking is ready. Press the microphone to connect. AAHVANI will greet you, then listen for your shopping request.",
+                        }],
+                        height=430,
+                        label="Live voice transcript",
+                        type="messages",
+                        elem_id="live-shopping-chat",
+                    )
+                    if LIVE_VOICE_CONFIGURED:
+                        live_audio = WebRTC(
+                            label="Speak with AAHVANI",
+                            mode="send-receive",
+                            modality="audio",
+                            variant="textbox",
+                            icon_button_color="#b98527",
+                            pulse_color="#d5a24d",
+                            track_constraints={
+                                "echoCancellation": True,
+                                "noiseSuppression": True,
+                                "autoGainControl": True,
+                                "channelCount": 1,
+                            },
+                            elem_id="aahvani-live-webrtc",
+                        )
+                        live_status = gr.Markdown(
+                            "Not connected yet. Press the microphone to start your Live Speaking session.",
+                            elem_classes=["status-note"],
+                            elem_id="live-status",
+                        )
+                        gr.Markdown(
+                            "Allow microphone access when your browser asks. Keep this tab open while speaking; "
+                            "AAHVANI's spoken reply will play automatically.",
+                            elem_classes=["live-control-hint"],
+                        )
+                        live_handler = AahvaniLiveHandler()
+                        live_audio.stream(
+                            live_handler,
+                            inputs=[live_audio],
+                            outputs=[live_audio],
+                            time_limit=900,
+                            concurrency_limit=3,
+                            send_input_on="submit",
+                        )
+                    else:
+                        live_audio = None
+                        if not LIVE_VOICE_AVAILABLE:
+                            live_status = gr.Markdown(
+                                f"Live Voice dependencies are unavailable: {LIVE_VOICE_IMPORT_ERROR}. "
+                                "Run python -m pip install -r requirements-live.txt, then restart AAHVANI.",
+                                elem_classes=["status-note"],
+                                elem_id="live-status",
+                            )
+                        else:
+                            live_status = gr.Markdown(
+                                "Add GEMINI_API_KEY to your local .env file and restart AAHVANI to enable Live Speaking.",
+                                elem_classes=["status-note"],
+                                elem_id="live-status",
+                            )
 
             with gr.Row():
                 refresh_orders_btn = gr.Button("Refresh my orders", variant="secondary")
@@ -872,28 +934,28 @@ with gr.Blocks(
             update_order_btn = gr.Button("Update demo order status", variant="primary")
             order_update_message = gr.Markdown(elem_classes=["status-note"])
 
-            if LIVE_VOICE_AVAILABLE and os.getenv("GEMINI_API_KEY", "").strip():
+            if live_audio is not None:
                 live_audio.on_additional_outputs(
                     lambda *values: values,
                     outputs=[
-                        live_status, chatbot, recommendations_panel,
+                        live_status, live_chatbot, recommendations_panel,
                         order_confirmation, orders_table,
                     ],
                     queue=False,
                     show_progress="hidden",
                 )
 
-    if not (LIVE_VOICE_AVAILABLE and os.getenv("GEMINI_API_KEY", "").strip()):
-        send.click(
-            shopping_chat,
-            [message, chatbot, session_state],
-            [chatbot, session_state, recommendations_panel, order_confirmation, orders_table, message],
-        )
-        message.submit(
-            shopping_chat,
-            [message, chatbot, session_state],
-            [chatbot, session_state, recommendations_panel, order_confirmation, orders_table, message],
-        )
+    # Text Chat is always wired, regardless of Gemini Live availability.
+    send.click(
+        shopping_chat,
+        [message, text_chatbot, session_state],
+        [text_chatbot, session_state, recommendations_panel, order_confirmation, orders_table, message],
+    )
+    message.submit(
+        shopping_chat,
+        [message, text_chatbot, session_state],
+        [text_chatbot, session_state, recommendations_panel, order_confirmation, orders_table, message],
+    )
     refresh_orders_btn.click(refresh_demo_orders, [], [orders_table])
     update_order_btn.click(
         update_demo_order_status,
