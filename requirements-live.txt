@@ -1,5 +1,5 @@
 # Optional: install this to enable real-time bidirectional voice mode.
-# Includes the official Google Gen AI SDK and FastRTC/WebRTC transport.
+# Pinned versions for the current Gemini Live + FastRTC integration.
 -r requirements.txt
--r requirements-gemini.txt
-fastrtc
+google-genai==3.6.1
+fastrtc==0.0.34
