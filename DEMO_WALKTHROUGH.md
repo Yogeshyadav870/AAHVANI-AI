@@ -72,16 +72,30 @@ Click **Generate summary**, then click **Refresh CRM & metrics**.
 
 Point out the lead record, qualification status, score and dashboard counts. This completes the end-to-end workflow from customer inquiry to CRM record and sample appointment.
 
-## Optional voice demonstration
+## Optional Speak Up — Live Voice Mode
 
-Only demonstrate this when the packages and microphone have already been tested:
+Use this only after installing `requirements-live.txt`, configuring a valid local `GEMINI_API_KEY`, and testing the microphone and speakers.
+
+1. Open **Speak Up — Live Voice Mode**.
+2. Press the WebRTC microphone control and allow browser microphone access.
+3. Say: "Hello, I'm Rahul. I run a digital marketing agency and want to improve how we follow up with leads."
+4. Continue with a natural follow-up exchange. Let AAHVANI ask about needs, budget, authority and timeline.
+5. Interrupt AAHVANI while it is speaking with a short clarification to demonstrate barge-in/turn-taking.
+6. Point to the conversation transcript and Lead Intelligence panel. Input transcripts are passed to the existing lead extractor, BANT-inspired score and SQLite CRM.
+7. End the live stream. Use the existing dashboard controls to inspect/save the lead, select a sample slot and explicitly confirm the demo booking.
+
+Explain the stages accurately: FastRTC/WebRTC streams browser audio to the Python server; Gemini Live processes audio in the cloud and returns native speech audio. The server also receives input/output transcripts. The local API key is never sent to browser JavaScript. Live mode uses the Gemini API and is subject to current quota and usage pricing. This is browser-based live voice, not PSTN telephony or a connected phone number.
+
+## Batch voice fallback
+
+If Live Voice Mode is unavailable, use the existing optional batch voice path:
 
 1. Record a short customer request using the microphone input.
-2. Wait for Faster-Whisper to transcribe the recording.
+2. Wait for Faster-Whisper to transcribe the recording locally.
 3. Review the transcription and click **Send voice message & hear reply**.
-4. Play the generated response.
+4. Play the Edge TTS response.
 
-Explain the stages accurately: Faster-Whisper runs locally (the first model load may take longer); the transcript uses the same sales-agent workflow as text; Edge TTS uses an online service to generate the spoken reply. This is a one-turn voice workflow, not a live telephony or full-duplex calling system.
+Faster-Whisper runs locally (the first model load may take longer); Edge TTS uses an online service. This is a one-turn workflow, not a live conversation.
 
 ## If something fails
 
