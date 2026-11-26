@@ -156,6 +156,21 @@ def refresh_service_appointments():
     return crm.recent_service_appointments()
 
 
+def update_service_appointment_status(request_id, status, provider_reference):
+    try:
+        crm.update_service_appointment_status(
+            str(request_id or "").strip(),
+            status,
+            str(provider_reference or "").strip(),
+        )
+        return (
+            crm.recent_service_appointments(),
+            f"Appointment status updated to **{status}**.",
+        )
+    except ValueError as exc:
+        return crm.recent_service_appointments(), f"**Could not update:** {exc}"
+
+
 CUSTOM_CSS = """
 :root, :host, html, body, gradio-app, .gradio-container,
 body.dark, .dark, [data-theme="dark"] {
@@ -793,6 +808,35 @@ with gr.Blocks(
             refresh_service_appointments_btn = gr.Button(
                 "Refresh appointment requests", variant="secondary"
             )
+            gr.Markdown(
+                "After contacting the provider, use this control to record their response. "
+                "Only select **Confirmed** after the provider has actually confirmed the slot."
+            )
+            with gr.Row():
+                appointment_request_id = gr.Textbox(
+                    label="Appointment request ID",
+                    placeholder="Paste the request ID from the table",
+                )
+                appointment_status = gr.Dropdown(
+                    choices=[
+                        "Pending provider confirmation",
+                        "Confirmed",
+                        "Declined",
+                        "Cancelled",
+                    ],
+                    value="Confirmed",
+                    label="Provider response",
+                )
+            provider_confirmation_note = gr.Textbox(
+                label="Provider confirmation reference / note",
+                placeholder="Required when marking Confirmed (e.g. provider reference or confirmation call details)",
+            )
+            update_service_appointment_btn = gr.Button(
+                "Update appointment status", variant="primary"
+            )
+            service_appointment_update_message = gr.Markdown(
+                elem_classes=["status-note"]
+            )
 
     outputs = [chatbot, session_state, message, lead_name, lead_company, lead_email, lead_phone, lead_score, lead_status, sentiment, crm_table, last_response_state, lead_count, qualified_count, appointment_count]
     if LIVE_VOICE_AVAILABLE:
@@ -820,6 +864,18 @@ with gr.Blocks(
     refresh_btn.click(refresh_crm, [], [crm_table, lead_count, qualified_count, appointment_count])
     refresh_service_appointments_btn.click(
         refresh_service_appointments, [], [service_appointments_table]
+    )
+    update_service_appointment_btn.click(
+        update_service_appointment_status,
+        [
+            appointment_request_id,
+            appointment_status,
+            provider_confirmation_note,
+        ],
+        [
+            service_appointments_table,
+            service_appointment_update_message,
+        ],
     )
 
 
