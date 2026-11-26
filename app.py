@@ -50,8 +50,8 @@ def initial_state():
 def shopping_chat(message, history, session):
     session = session or initial_state()
     session.setdefault("session_id", str(uuid.uuid4()))
-    order_match = re.search(r"\\bAAH-[A-Z0-9]{8}\\b", str(message or ""), re.I)
-    if order_match and re.search(r"\\b(order|status|track|delivery|delivered)\\b", str(message or ""), re.I):
+    order_match = re.search(r"\bAAH-[A-Z0-9]{8}\\b", str(message or ""), re.I)
+    if order_match and re.search(r"\b(order|status|track|delivery|delivered)\\b", str(message or ""), re.I):
         record = crm.get_demo_order(order_match.group(0))
         if record:
             answer = (
