@@ -669,7 +669,9 @@ with gr.Blocks(
                 inputs=[live_audio],
                 outputs=[live_audio],
                 time_limit=900,
-                concurrency_limit=1,
+                # Permit a few browser tabs / reconnect attempts while keeping
+                # the number of simultaneous Gemini Live sessions bounded.
+                concurrency_limit=3,
             )
         else:
             gr.Markdown(
