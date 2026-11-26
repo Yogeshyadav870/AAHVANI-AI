@@ -136,26 +136,46 @@ def refresh_crm():
 
 
 CUSTOM_CSS = """
-:root {
-    --page-bg: #dfcfbf;
-    --card-bg: #fffdf9;
-    --inner-bg: #f6eee5;
-    --inner-bg-soft: #faf5ef;
-    --ink: #211a14;
-    --muted: #74685c;
-    --gold: #a97617;
-    --gold-deep: #87590f;
-    --gold-soft: #e8d4ae;
-    --line: #e5d6c7;
-    --shadow: rgba(79, 54, 30, .12);
+:root, :host, html, body, gradio-app, .gradio-container,
+body.dark, .dark, [data-theme="dark"] {
+    color-scheme: light !important;
+    --page-bg: #dfcfbf !important;
+    --card-bg: #fffdf9 !important;
+    --inner-bg: #f6eee5 !important;
+    --inner-bg-soft: #faf5ef !important;
+    --ink: #211a14 !important;
+    --muted: #74685c !important;
+    --gold: #a97617 !important;
+    --gold-deep: #87590f !important;
+    --gold-soft: #e8d4ae !important;
+    --line: #e5d6c7 !important;
+
+    /* Gradio theme tokens: explicitly force the light palette. */
+    --body-background-fill: #dfcfbf !important;
+    --body-text-color: #211a14 !important;
+    --background-fill-primary: #fffdf9 !important;
+    --background-fill-secondary: #f6eee5 !important;
+    --block-background-fill: #fffdf9 !important;
+    --block-border-color: #e5d6c7 !important;
+    --block-label-text-color: #6e6052 !important;
+    --input-background-fill: #f7f0e8 !important;
+    --input-border-color: #e3d3c2 !important;
+    --input-placeholder-color: #897b6d !important;
+    --button-primary-background-fill: #332316 !important;
+    --button-primary-background-fill-hover: #49321f !important;
+    --button-primary-text-color: #fffdf9 !important;
+    --button-secondary-background-fill: #f5ede3 !important;
+    --button-secondary-text-color: #654719 !important;
+    --border-color-primary: #e5d6c7 !important;
+    --border-color-accent: #d8c6b3 !important;
 }
 
-html, body {
+html, body, body.dark {
     min-height: 100%;
-    background: var(--page-bg) !important;
+    background: #dfcfbf !important;
+    color: #211a14 !important;
 }
-body {
-    color: var(--ink) !important;
+body, body.dark, gradio-app {
     background:
         radial-gradient(ellipse at 12% 8%, rgba(255, 250, 243, .48), transparent 34%),
         radial-gradient(ellipse at 92% 92%, rgba(245, 222, 194, .42), transparent 32%),
@@ -163,15 +183,20 @@ body {
 }
 #ambient-background { display: none !important; }
 
-.gradio-container {
+.gradio-container, body.dark .gradio-container, gradio-app .gradio-container {
     position: relative !important;
     z-index: 1 !important;
     max-width: 1480px !important;
     margin: 0 auto !important;
     padding: 28px 30px 54px !important;
     background: transparent !important;
-    color: var(--ink) !important;
+    color: #211a14 !important;
     font-family: Inter, "Segoe UI", Arial, sans-serif !important;
+}
+.gradio-container main, .gradio-container .main, .gradio-container .contain,
+.gradio-container .wrap, .gradio-container .form,
+.gradio-container [data-testid="block"] {
+    color: #211a14 !important;
 }
 
 #hero {
@@ -188,7 +213,7 @@ body {
     border-radius: 28px;
     background:
         radial-gradient(ellipse at 80% 100%, rgba(224, 199, 159, .18), transparent 38%),
-        linear-gradient(112deg, #fbf8f3 0%, #f8f4ed 56%, #f5efe5 100%);
+        linear-gradient(112deg, #fbf8f3 0%, #f8f4ed 56%, #f5efe5 100%) !important;
     box-shadow: 0 14px 34px rgba(91, 65, 38, .10), inset 0 1px 0 #fff;
 }
 #hero:before {
@@ -243,16 +268,8 @@ body {
     line-height: 1.06;
     letter-spacing: .2px;
 }
-#hero h1 span {
-    color: #987022;
-    text-shadow: 0 2px 0 rgba(255,255,255,.35);
-}
-#hero p {
-    margin: 11px 0 0;
-    color: #716456;
-    font-size: 15px;
-    line-height: 1.6;
-}
+#hero h1 span { color: #987022; text-shadow: 0 2px 0 rgba(255,255,255,.35); }
+#hero p { margin: 11px 0 0; color: #716456; font-size: 15px; line-height: 1.6; }
 .hero-brandmark {
     position: relative;
     z-index: 1;
@@ -274,7 +291,13 @@ body {
     background: linear-gradient(145deg, #fffefa 0%, #fffdf9 100%) !important;
     box-shadow: 0 10px 25px rgba(83, 59, 35, .09), inset 0 1px 0 #fff !important;
 }
-.kpi-card label {
+.kpi-card > *, .kpi-card .wrap, .kpi-card .form,
+.kpi-card [data-testid="block"], .kpi-card .container {
+    background: transparent !important;
+    border-color: transparent !important;
+    box-shadow: none !important;
+}
+.kpi-card label, .kpi-card span {
     color: #76695b !important;
     font-size: 10px !important;
     font-weight: 800 !important;
@@ -295,19 +318,27 @@ body {
 .workspace-grid, .insights-grid { gap: 20px !important; align-items: stretch !important; }
 .surface-card, .panel {
     background: linear-gradient(145deg, #fffefa 0%, #fffdf9 100%) !important;
+    color: #211a14 !important;
     border: 1px solid rgba(255,255,255,.96) !important;
     border-radius: 25px !important;
     padding: 21px !important;
     box-shadow: 0 13px 30px rgba(83, 59, 35, .10), inset 0 1px 0 #fff !important;
     backdrop-filter: blur(12px);
 }
-.right-rail { gap: 16px !important; }
-.section-head {
-    display: flex;
-    align-items: flex-start;
-    gap: 12px;
-    margin: 0 0 16px;
+#lead-panel, #booking-panel, #summary-panel, #crm-panel {
+    min-width: 0;
+    color: #211a14 !important;
+    background: #fffdf9 !important;
 }
+#lead-panel .wrap, #booking-panel .wrap,
+#lead-panel > .wrap, #booking-panel > .wrap,
+#lead-panel [data-testid="block"], #booking-panel [data-testid="block"] {
+    background: #fffdf9 !important;
+    color: #211a14 !important;
+    border-color: #eee5da !important;
+}
+.right-rail { gap: 16px !important; }
+.section-head { display: flex; align-items: flex-start; gap: 12px; margin: 0 0 16px; }
 .section-symbol {
     display: grid;
     place-items: center;
@@ -315,36 +346,30 @@ body {
     height: 37px;
     flex: 0 0 37px;
     border-radius: 12px;
-    color: #916313;
-    background: linear-gradient(145deg, #f7eddd, #f2e7d6);
-    border: 1px solid #ebddc9;
+    color: #916313 !important;
+    background: linear-gradient(145deg, #f7eddd, #f2e7d6) !important;
+    border: 1px solid #ebddc9 !important;
     font-size: 17px;
 }
-.section-head h2 {
-    margin: 0;
-    color: #241c15;
-    font-size: 18px;
-    font-weight: 780;
-    letter-spacing: -.2px;
-}
-.section-head p {
-    margin: 4px 0 0;
-    color: #776a5d;
-    font-size: 12px;
-    line-height: 1.5;
-}
+.section-head h2 { margin: 0; color: #241c15 !important; font-size: 18px; font-weight: 780; letter-spacing: -.2px; }
+.section-head p { margin: 4px 0 0; color: #776a5d !important; font-size: 12px; line-height: 1.5; }
 
+#conversation-chat, #conversation-chat > *, #conversation-chat .wrap,
+#conversation-chat .container, #conversation-chat .message-wrap,
+#conversation-chat [data-testid="chatbot"] {
+    background: linear-gradient(150deg, #f5ede4 0%, #f8f2eb 100%) !important;
+    color: #30251b !important;
+    border-color: #e8d9c9 !important;
+}
 #conversation-chat {
     overflow: hidden;
     border: 1px solid #e8d9c9 !important;
     border-radius: 18px !important;
-    background: linear-gradient(150deg, #f5ede4 0%, #f8f2eb 100%) !important;
     box-shadow: inset 0 1px 5px rgba(83, 59, 35, .035);
 }
-#conversation-chat .message-wrap, #conversation-chat .wrap { background: transparent !important; }
 #conversation-chat .message { border-radius: 15px !important; }
-#message-input textarea,
-textarea, input, select {
+#message-input, #message-input > *, #message-input .wrap,
+#message-input textarea, textarea, input, select {
     border: 1px solid #e3d3c2 !important;
     border-radius: 13px !important;
     background: linear-gradient(145deg, #f7f0e8, #f9f4ee) !important;
@@ -389,19 +414,18 @@ label, .label-wrap span { color: #6e6052 !important; font-weight: 700 !important
     border-radius: 15px !important;
     background: #f8f2eb !important;
 }
-#lead-panel, #booking-panel, #summary-panel, #crm-panel { min-width: 0; }
-.status-note { color: #776a5d; font-size: 12px; line-height: 1.55; }
+.status-note { color: #776a5d !important; font-size: 12px; line-height: 1.55; }
 #voice-note {
     padding: 11px 14px;
     border-left: 3px solid #b58a42;
     border-radius: 0 11px 11px 0;
-    background: #f6eee4;
-    color: #786a5a;
+    background: #f6eee4 !important;
+    color: #786a5a !important;
     font-size: 12px;
     line-height: 1.5;
 }
 #speech-output { border-radius: 14px !important; }
-#crm-table { border-radius: 14px; overflow: hidden; }
+#crm-table { border-radius: 14px; overflow: hidden; background: #fffdf9 !important; color: #211a14 !important; }
 footer { opacity: .48 !important; }
 
 @media (max-width: 850px) {
