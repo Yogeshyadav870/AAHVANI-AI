@@ -236,6 +236,18 @@ class ShoppingAgent:
         shopping = session.setdefault("shopping", self.new_session()["shopping"])
         lower = text.lower()
 
+        requested_category = self.catalogue.detect_category(text)
+        if (
+            requested_category
+            and requested_category != shopping.get("category")
+            and self.CATEGORY_SWITCH.search(text)
+        ):
+            shopping.update({
+                "category": requested_category, "budget_max": None, "brand": "",
+                "use_case": "", "recommendations": [], "awaiting_selection": False,
+                "selected_product": None, "awaiting_confirmation": False,
+            })
+
         if shopping.get("awaiting_confirmation"):
             if self.YES.fullmatch(lower):
                 session["demo_order_to_create"] = {
