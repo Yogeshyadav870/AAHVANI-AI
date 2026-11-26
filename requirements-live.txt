@@ -2,5 +2,6 @@
 # Pinned versions for the current Gemini Live + FastRTC integration.
 -r requirements.txt
 # Interactions API requires google-genai >=2.3.0; pin current verified release.
-google-genai==3.6.1
+# Interactions API support starts at 2.3.0; 2.8.0 remains compatible with Gradio 5.49.1's Pydantic range.
+google-genai==2.8.0
 fastrtc==0.0.34
