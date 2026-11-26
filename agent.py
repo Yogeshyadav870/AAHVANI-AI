@@ -91,7 +91,7 @@ class AahvaniAgent:
                 return f"{amount} (flexible)" if flexible else amount
 
         # Also accept an unqualified numeric budget such as "55000 and it's flexible".
-        bare_amount = re.search(r"(?<![\w+])(\d{3,}(?:,\d{3})*(?:\.\d+)?)(?!\w)", text)
+        bare_amount = re.search(r"(?<![\w+])((?:\d{1,3}(?:,\d{3})+|\d{3,})(?:\.\d+)?)(?!\w)", text)
         if bare_amount:
             try:
                 number = float(bare_amount.group(1).replace(",", ""))
