@@ -474,14 +474,8 @@ question. Never claim to be a human salesperson.
             "",
         )
         answer = text.strip().lower()
-        is_yes = bool(re.fullmatch(
-            r"(?:yes|yeah|yep|yup|correct|sure|that's right|that is right)[.! ]*",
-            answer,
-        ))
-        is_no = bool(re.fullmatch(
-            r"(?:no|nope|not really|i don't|i do not)[.! ]*",
-            answer,
-        ))
+        is_yes = self.agent._is_simple_yes(text)
+        is_no = self.agent._is_simple_no(text)
 
         if (
             not lead.get("authority")
