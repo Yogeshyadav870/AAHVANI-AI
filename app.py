@@ -123,64 +123,373 @@ def refresh_crm():
 
 
 CUSTOM_CSS = """
-.gradio-container {max-width: 1280px !important; margin: auto !important;}
-#hero {padding: 24px 26px; border-radius: 18px; background: linear-gradient(115deg, #101a35, #203b62); color: white; margin-bottom: 14px;}
-#hero h1 {font-size: 34px; margin: 0 0 6px 0; letter-spacing: .4px;}
-#hero p {margin: 0; color: #d4e0ef;}
-.panel {border: 1px solid var(--border-color-primary); border-radius: 14px; padding: 14px;}
+:root {
+    --aahvani-ink: #eaf4ff;
+    --aahvani-muted: #9fb3c9;
+    --aahvani-line: rgba(154, 190, 211, .16);
+    --aahvani-panel: rgba(12, 27, 45, .82);
+    --aahvani-teal: #42d6c4;
+    --aahvani-blue: #5b9dff;
+}
+
+html, body {
+    min-height: 100%;
+    background: #071321 !important;
+}
+
+body {
+    background:
+        radial-gradient(ellipse at 8% 5%, rgba(21, 146, 145, .22), transparent 30%),
+        radial-gradient(ellipse at 92% 8%, rgba(53, 105, 190, .23), transparent 32%),
+        radial-gradient(ellipse at 50% 100%, rgba(17, 91, 111, .15), transparent 38%),
+        linear-gradient(135deg, #071321 0%, #0a1728 48%, #0b1d30 100%) fixed !important;
+    color: var(--aahvani-ink) !important;
+}
+
+.gradio-container {
+    max-width: 1450px !important;
+    margin: 0 auto !important;
+    padding: 24px 28px 48px !important;
+    background: transparent !important;
+    color: var(--aahvani-ink) !important;
+    font-family: Inter, "Segoe UI", Arial, sans-serif !important;
+}
+
+#hero {
+    position: relative;
+    isolation: isolate;
+    overflow: hidden;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    min-height: 190px;
+    padding: 32px 38px;
+    margin: 0 0 24px 0;
+    border: 1px solid rgba(153, 218, 226, .23);
+    border-radius: 26px;
+    background:
+        linear-gradient(112deg, rgba(12, 46, 67, .98) 0%, rgba(16, 59, 78, .96) 48%, rgba(24, 48, 86, .97) 100%);
+    box-shadow: 0 22px 65px rgba(0, 0, 0, .27), inset 0 1px 0 rgba(255,255,255,.08);
+}
+
+#hero:before {
+    content: "";
+    position: absolute;
+    z-index: -1;
+    width: 410px;
+    height: 410px;
+    right: 8%;
+    top: -230px;
+    border-radius: 50%;
+    background: radial-gradient(circle, rgba(67, 217, 196, .28), rgba(67, 217, 196, 0) 68%);
+}
+
+#hero:after {
+    content: "";
+    position: absolute;
+    z-index: -1;
+    width: 330px;
+    height: 330px;
+    right: -55px;
+    bottom: -245px;
+    border: 1px solid rgba(111, 213, 218, .24);
+    border-radius: 50%;
+    box-shadow: 0 0 0 28px rgba(111, 213, 218, .035), 0 0 0 58px rgba(111, 213, 218, .025);
+}
+
+.hero-copy { position: relative; z-index: 1; }
+.hero-kicker {
+    display: inline-flex;
+    align-items: center;
+    gap: 9px;
+    color: #91eee1;
+    font-size: 11px;
+    font-weight: 800;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    margin-bottom: 13px;
+}
+.hero-dot {
+    width: 8px;
+    height: 8px;
+    display: inline-block;
+    border-radius: 50%;
+    background: #45dec7;
+    box-shadow: 0 0 14px rgba(69, 222, 199, .95);
+}
+.hero-tag {
+    padding: 5px 9px;
+    margin-left: 5px;
+    border: 1px solid rgba(162, 221, 231, .25);
+    border-radius: 99px;
+    color: #c5d9e8;
+    font-size: 9px;
+    letter-spacing: 1.2px;
+}
+#hero h1 {
+    margin: 0;
+    color: #f4fbff;
+    font-size: clamp(34px, 4vw, 48px);
+    font-weight: 850;
+    line-height: 1.08;
+    letter-spacing: 1.4px;
+}
+#hero h1 span {
+    color: #65e0d0;
+    text-shadow: 0 0 26px rgba(101, 224, 208, .2);
+}
+#hero p {
+    margin: 11px 0 0;
+    color: #c1d3e5;
+    font-size: 15px;
+    line-height: 1.6;
+}
+.hero-orbit {
+    position: relative;
+    width: 126px;
+    height: 126px;
+    flex: 0 0 126px;
+    margin: 0 42px 0 24px;
+    border: 1px solid rgba(113, 222, 218, .4);
+    border-radius: 50%;
+    background: radial-gradient(circle, rgba(69, 210, 195, .18), rgba(53, 129, 168, .05) 62%, transparent 64%);
+    box-shadow: 0 0 42px rgba(59, 210, 194, .13), inset 0 0 30px rgba(77, 196, 207, .1);
+}
+.hero-orbit:before, .hero-orbit:after {
+    content: "";
+    position: absolute;
+    inset: 15px;
+    border: 1px solid rgba(150, 230, 229, .36);
+    border-radius: 50%;
+}
+.hero-orbit:after { inset: 31px; border-color: rgba(150, 230, 229, .24); }
+.hero-orbit-core {
+    position: absolute;
+    inset: 48px;
+    border-radius: 50%;
+    background: #8af2df;
+    box-shadow: 0 0 22px rgba(138, 242, 223, .9);
+}
+
+.workspace-grid, .insights-grid { gap: 20px !important; align-items: flex-start !important; }
+.surface-card, .panel {
+    background: var(--aahvani-panel) !important;
+    border: 1px solid var(--aahvani-line) !important;
+    border-radius: 22px !important;
+    padding: 20px !important;
+    box-shadow: 0 16px 42px rgba(0, 0, 0, .20), inset 0 1px 0 rgba(255,255,255,.035) !important;
+    backdrop-filter: blur(16px);
+}
+.right-rail { gap: 16px !important; }
+.section-head {
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+    margin: 0 0 16px;
+}
+.section-symbol {
+    display: grid;
+    place-items: center;
+    width: 36px;
+    height: 36px;
+    flex: 0 0 36px;
+    border-radius: 12px;
+    color: #77ebdc;
+    background: rgba(65, 205, 190, .12);
+    border: 1px solid rgba(104, 225, 210, .18);
+    font-size: 17px;
+}
+.section-head h2 {
+    margin: 0;
+    color: #edf7ff;
+    font-size: 17px;
+    font-weight: 750;
+    letter-spacing: .1px;
+}
+.section-head p {
+    margin: 4px 0 0;
+    color: var(--aahvani-muted);
+    font-size: 12px;
+    line-height: 1.5;
+}
+
+#conversation-chat {
+    overflow: hidden;
+    border: 1px solid rgba(148, 186, 210, .16) !important;
+    border-radius: 18px !important;
+    background: rgba(5, 16, 29, .78) !important;
+    box-shadow: inset 0 1px 12px rgba(0,0,0,.16);
+}
+#conversation-chat .message-wrap, #conversation-chat .wrap {
+    background: transparent !important;
+}
+#conversation-chat .message {
+    border-radius: 16px !important;
+}
+#message-input textarea, textarea, input, select {
+    border: 1px solid rgba(150, 188, 210, .17) !important;
+    border-radius: 13px !important;
+    background: rgba(7, 20, 35, .78) !important;
+    color: #eaf4ff !important;
+    box-shadow: none !important;
+}
+textarea::placeholder, input::placeholder { color: #7890a9 !important; }
+label, .label-wrap span {
+    color: #bfd0df !important;
+    font-weight: 650 !important;
+}
+.gradio-container .prose h3 {
+    color: #e9f5ff !important;
+}
+.gradio-container button {
+    min-height: 44px;
+    border-radius: 13px !important;
+    font-weight: 700 !important;
+    transition: transform .16s ease, filter .16s ease, box-shadow .16s ease;
+}
+.gradio-container button:hover {
+    filter: brightness(1.08);
+    transform: translateY(-1px);
+}
+.gradio-container button.primary, .gradio-container .primary {
+    border: 1px solid rgba(111, 231, 216, .28) !important;
+    background: linear-gradient(115deg, #137e83 0%, #168f9b 48%, #316eb8 100%) !important;
+    color: #f4ffff !important;
+    box-shadow: 0 8px 22px rgba(19, 143, 153, .20) !important;
+}
+.gradio-container button.secondary {
+    border: 1px solid rgba(131, 183, 205, .24) !important;
+    background: rgba(37, 64, 85, .72) !important;
+    color: #dff6f7 !important;
+}
+#lead-panel, #booking-panel, #summary-panel, #crm-panel { min-width: 0; }
+.status-note {
+    color: #9fb5c9;
+    font-size: 12px;
+    line-height: 1.55;
+}
+#voice-note {
+    padding: 10px 13px;
+    border-left: 2px solid rgba(72, 211, 194, .65);
+    border-radius: 0 10px 10px 0;
+    background: rgba(44, 125, 130, .09);
+    color: #a8c0d0;
+    font-size: 12px;
+    line-height: 1.5;
+}
+#speech-output { border-radius: 14px !important; }
+#crm-table { border-radius: 14px; overflow: hidden; }
+footer { opacity: .55 !important; }
+
+@media (max-width: 850px) {
+    .gradio-container { padding: 14px 12px 32px !important; }
+    #hero { min-height: 150px; padding: 25px 22px; }
+    .hero-orbit { width: 76px; height: 76px; flex-basis: 76px; margin-right: 5px; }
+    .hero-orbit:before { inset: 10px; }
+    .hero-orbit:after { inset: 20px; }
+    .hero-orbit-core { inset: 30px; }
+    .surface-card, .panel { padding: 15px !important; }
+}
+@media (prefers-reduced-motion: reduce) {
+    * { transition: none !important; scroll-behavior: auto !important; }
+}
 """
 
 with gr.Blocks(title=APP_NAME) as demo:
     session_state = gr.State(initial_state())
-    gr.HTML("<div id='hero'><h1>AAHVANI AI</h1><p>Autonomous sales conversations · Lead qualification · Demo scheduling</p></div>")
-    with gr.Row():
-        with gr.Column(scale=7):
-            gr.Markdown("### Live customer conversation")
-            chatbot = gr.Chatbot(height=430, label="Conversation")
+
+    gr.HTML("""
+    <header id="hero">
+        <div class="hero-copy">
+            <div class="hero-kicker"><span class="hero-dot"></span> AI SALES WORKSPACE <span class="hero-tag">LOCAL MVP</span></div>
+            <h1>AAHVANI <span>AI</span></h1>
+            <p>Intelligent sales conversations, qualified leads, and effortless demo scheduling.</p>
+        </div>
+        <div class="hero-orbit" aria-hidden="true"><div class="hero-orbit-core"></div></div>
+    </header>
+    """)
+
+    with gr.Row(elem_classes=["workspace-grid"]):
+        with gr.Column(scale=7, elem_classes=["surface-card", "conversation-panel"]):
+            gr.HTML("""
+            <div class="section-head">
+                <div class="section-symbol">✦</div>
+                <div><h2>Live customer conversation</h2><p>Talk naturally. AAHVANI captures intent and guides the next step.</p></div>
+            </div>
+            """)
+            chatbot = gr.Chatbot(height=420, label="Conversation", elem_id="conversation-chat")
+            with gr.Row(elem_classes=["composer-row"]):
+                message = gr.Textbox(
+                    placeholder="Start with: Hi, I run a small agency and need help tracking leads...",
+                    show_label=False, scale=8, lines=2, elem_id="message-input"
+                )
+                send = gr.Button("Send  ↗", variant="primary", scale=1)
             with gr.Row():
-                message = gr.Textbox(placeholder="Try: Hi, I run a small real-estate agency and need help tracking leads...", show_label=False, scale=8, lines=2)
-                send = gr.Button("Send", variant="primary", scale=1)
+                audio_input = gr.Audio(sources=["microphone"], type="filepath", label="Voice input", scale=3)
+                transcribed = gr.Textbox(label="Transcription", placeholder="Speech will appear here...", scale=4, lines=2)
             with gr.Row():
-                audio_input = gr.Audio(sources=["microphone"], type="filepath", label="Optional voice input", scale=3)
-                transcribed = gr.Textbox(label="Transcription", placeholder="Record speech or type here", scale=4, lines=2)
-            use_transcript = gr.Button("Use transcription")
-            speak_btn = gr.Button("Speak last AI response")
-            speech_output = gr.Audio(label="AI voice response", type="filepath", interactive=False)
-            speech_status = gr.Markdown()
-            gr.Markdown("*Speech input uses optional Faster-Whisper. Speech output uses optional Edge TTS and requires internet. Text chat works without either.*")
-        with gr.Column(scale=5):
-            gr.Markdown("### Lead intelligence")
-            with gr.Group(elem_classes=["panel"]):
-                lead_name = gr.Textbox(label="Customer name")
-                lead_company = gr.Textbox(label="Company")
-                lead_email = gr.Textbox(label="Email")
-                lead_phone = gr.Textbox(label="Phone")
-                lead_score = gr.Number(label="Lead score / 100", value=0, interactive=False)
-                lead_status = gr.Textbox(label="Qualification", value="Nurture", interactive=False)
+                use_transcript = gr.Button("Use transcription", variant="secondary")
+                speak_btn = gr.Button("Speak AI response", variant="secondary")
+            speech_output = gr.Audio(label="AI voice response", type="filepath", interactive=False, elem_id="speech-output")
+            speech_status = gr.Markdown(elem_classes=["status-note"])
+            gr.HTML("<div id='voice-note'>Voice features are optional. Text chat works without microphone access or additional speech packages.</div>")
+
+        with gr.Column(scale=5, elem_classes=["right-rail"]):
+            with gr.Group(elem_classes=["surface-card"], elem_id="lead-panel"):
+                gr.HTML("""
+                <div class="section-head">
+                    <div class="section-symbol">◈</div>
+                    <div><h2>Lead intelligence</h2><p>Customer profile and buying-readiness signals.</p></div>
+                </div>
+                """)
+                lead_name = gr.Textbox(label="Customer name", placeholder="Name")
+                lead_company = gr.Textbox(label="Company", placeholder="Business or organisation")
+                lead_email = gr.Textbox(label="Email", placeholder="name@company.com")
+                lead_phone = gr.Textbox(label="Phone", placeholder="+91 ...")
+                with gr.Row():
+                    lead_score = gr.Number(label="Lead score / 100", value=0, interactive=False)
+                    lead_status = gr.Textbox(label="Qualification", value="Nurture", interactive=False)
                 sentiment = gr.Textbox(label="Sentiment", value="Neutral", interactive=False)
                 save_lead_btn = gr.Button("Save lead to CRM", variant="secondary")
-                save_status = gr.Markdown()
-            with gr.Group(elem_classes=["panel"]):
-                gr.Markdown("### Schedule a product demo")
+                save_status = gr.Markdown(elem_classes=["status-note"])
+
+            with gr.Group(elem_classes=["surface-card"], elem_id="booking-panel"):
+                gr.HTML("""
+                <div class="section-head">
+                    <div class="section-symbol">◷</div>
+                    <div><h2>Schedule a product demo</h2><p>Choose a sample slot to complete the workflow.</p></div>
+                </div>
+                """)
                 slot = gr.Dropdown(choices=SAMPLE_SLOTS, value=SAMPLE_SLOTS[0], label="Available sample slots")
-                book_btn = gr.Button("Book demo", variant="primary")
-                booking_status = gr.Markdown()
-    with gr.Row():
-        with gr.Column():
-            gr.Markdown("### Call summary")
-            summary = gr.Textbox(lines=10, label="Conversation summary", interactive=False)
-            summary_btn = gr.Button("Generate call summary")
-        with gr.Column():
-            gr.Markdown("### Local CRM records")
+                book_btn = gr.Button("Confirm demo booking", variant="primary")
+                booking_status = gr.Markdown(elem_classes=["status-note"])
+
+    with gr.Row(elem_classes=["insights-grid"]):
+        with gr.Column(scale=5, elem_classes=["surface-card"], elem_id="summary-panel"):
+            gr.HTML("""
+            <div class="section-head">
+                <div class="section-symbol">▤</div>
+                <div><h2>Call summary</h2><p>Key customer details and the conversation outcome.</p></div>
+            </div>
+            """)
+            summary = gr.Textbox(lines=9, label="Conversation summary", interactive=False)
+            summary_btn = gr.Button("Generate summary", variant="secondary")
+        with gr.Column(scale=7, elem_classes=["surface-card"], elem_id="crm-panel"):
+            gr.HTML("""
+            <div class="section-head">
+                <div class="section-symbol">▦</div>
+                <div><h2>Local CRM records</h2><p>Leads and demo bookings saved in the local database.</p></div>
+            </div>
+            """)
             crm_table = gr.Dataframe(
                 headers=["Name", "Company", "Email", "Score", "Status", "Sentiment", "Updated"],
                 datatype=["str", "str", "str", "number", "str", "str", "str"],
-                value=crm.recent_leads(), interactive=False, label="Recent leads"
+                value=crm.recent_leads(), interactive=False, label="Recent leads", elem_id="crm-table"
             )
             with gr.Row():
                 lead_count = gr.Number(label="Saved leads", value=len(crm.recent_leads()), interactive=False)
                 appointment_count = gr.Number(label="Demo bookings", value=crm.appointment_count(), interactive=False)
-            refresh_btn = gr.Button("Refresh CRM")
+            refresh_btn = gr.Button("Refresh CRM", variant="secondary")
 
     outputs = [chatbot, session_state, message, lead_name, lead_company, lead_email, lead_phone, lead_score, lead_status, sentiment, crm_table]
     send.click(chat, [message, chatbot, session_state], outputs)
@@ -195,4 +504,10 @@ with gr.Blocks(title=APP_NAME) as demo:
 
 
 if __name__ == "__main__":
-    demo.launch(server_name=os.getenv("HOST", "127.0.0.1"), server_port=int(os.getenv("PORT", "7860")), share=False, theme=gr.themes.Soft(), css=CUSTOM_CSS)
+    demo.launch(
+        server_name=os.getenv("HOST", "127.0.0.1"),
+        server_port=int(os.getenv("PORT", "7860")),
+        share=False,
+        theme=gr.themes.Soft(primary_hue="teal", secondary_hue="cyan", neutral_hue="slate"),
+        css=CUSTOM_CSS,
+    )
