@@ -38,6 +38,26 @@ class CRM:
                 status TEXT NOT NULL DEFAULT 'Booked', created_at TEXT DEFAULT CURRENT_TIMESTAMP,
                 FOREIGN KEY(lead_id) REFERENCES leads(id)
             )""")
+            conn.execute("""CREATE TABLE IF NOT EXISTS service_appointments (
+                id TEXT PRIMARY KEY,
+                lead_id TEXT NOT NULL,
+                service_category TEXT NOT NULL,
+                service_name TEXT NOT NULL,
+                provider_name TEXT NOT NULL DEFAULT 'Provider to be selected',
+                city TEXT NOT NULL DEFAULT 'Jalandhar',
+                preferred_date TEXT NOT NULL,
+                preferred_time TEXT NOT NULL,
+                customer_name TEXT NOT NULL,
+                customer_phone TEXT NOT NULL DEFAULT '',
+                customer_email TEXT NOT NULL DEFAULT '',
+                notes TEXT NOT NULL DEFAULT '',
+                status TEXT NOT NULL DEFAULT 'Pending provider confirmation',
+                provider_reference TEXT NOT NULL DEFAULT '',
+                source TEXT NOT NULL DEFAULT 'Gemini Live Voice',
+                created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+                updated_at TEXT DEFAULT CURRENT_TIMESTAMP,
+                FOREIGN KEY(lead_id) REFERENCES leads(id)
+            )""")
 
     def save_lead(self, lead: dict[str, Any], lead_id: str | None = None) -> str:
         lead_id = lead_id or str(uuid.uuid4())
@@ -64,6 +84,144 @@ class CRM:
                 return str(existing["id"])
             conn.execute("INSERT INTO appointments (id, lead_id, slot) VALUES (?, ?, ?)", (appointment_id, lead_id, slot))
         return appointment_id
+
+    def create_service_appointment_request(
+        self,
+        *,
+        lead_id: str,
+        service_category: str,
+        service_name: str,
+        provider_name: str = "",
+        city: str = "Jalandhar",
+        preferred_date: str,
+        preferred_time: str,
+        customer_name: str,
+        customer_phone: str = "",
+        customer_email: str = "",
+        notes: str = "",
+        source: str = "Gemini Live Voice",
+    ) -> dict[str, Any]:
+        """Save a voice-captured service appointment request, pending provider confirmation."""
+        required = {
+            "lead_id": lead_id,
+            "service_category": service_category,
+            "service_name": service_name,
+            "city": city,
+            "preferred_date": preferred_date,
+            "preferred_time": preferred_time,
+            "customer_name": customer_name,
+        }
+        missing = [field for field, value in required.items() if not str(value or "").strip()]
+        if missing:
+            raise ValueError("Missing required appointment details: " + ", ".join(missing))
+        if not (customer_phone or customer_email):
+            raise ValueError("A phone number or email address is required for provider follow-up.")
+
+        with self._connect() as conn:
+            lead_exists = conn.execute(
+                "SELECT 1 FROM leads WHERE id = ?", (lead_id,)
+            ).fetchone()
+            if not lead_exists:
+                raise ValueError("Save the customer record before creating an appointment request.")
+
+            # Avoid duplicate requests when Gemini retries the same confirmed tool call.
+            contact_value = customer_phone.strip() or customer_email.strip().lower()
+            existing = conn.execute(
+                """SELECT * FROM service_appointments
+                   WHERE lead_id = ? AND service_category = ? AND service_name = ?
+                     AND provider_name = ? AND city = ? AND preferred_date = ?
+                     AND preferred_time = ? AND status != 'Cancelled'
+                   ORDER BY created_at DESC LIMIT 1""",
+                (
+                    lead_id,
+                    service_category.strip(),
+                    service_name.strip(),
+                    (provider_name or "Provider to be selected").strip(),
+                    city.strip(),
+                    preferred_date.strip(),
+                    preferred_time.strip(),
+                ),
+            ).fetchone()
+            if existing and contact_value in {
+                str(existing["customer_phone"] or "").strip(),
+                str(existing["customer_email"] or "").strip().lower(),
+            }:
+                record = dict(existing)
+                record["duplicate_prevented"] = True
+                return record
+
+            appointment_id = str(uuid.uuid4())
+            provider = provider_name.strip() or "Provider to be selected"
+            conn.execute(
+                """INSERT INTO service_appointments (
+                    id, lead_id, service_category, service_name, provider_name, city,
+                    preferred_date, preferred_time, customer_name, customer_phone,
+                    customer_email, notes, status, source
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?,
+                          'Pending provider confirmation', ?)""",
+                (
+                    appointment_id,
+                    lead_id,
+                    service_category.strip(),
+                    service_name.strip(),
+                    provider,
+                    city.strip(),
+                    preferred_date.strip(),
+                    preferred_time.strip(),
+                    customer_name.strip(),
+                    customer_phone.strip(),
+                    customer_email.strip(),
+                    notes.strip(),
+                    source.strip(),
+                ),
+            )
+            row = conn.execute(
+                "SELECT * FROM service_appointments WHERE id = ?", (appointment_id,)
+            ).fetchone()
+        return dict(row)
+
+    def recent_service_appointments(self, limit: int = 50) -> list[list[Any]]:
+        with self._connect() as conn:
+            rows = conn.execute(
+                """SELECT customer_name, service_category, service_name, provider_name,
+                          city, preferred_date, preferred_time, status, customer_phone,
+                          customer_email, id, created_at
+                   FROM service_appointments
+                   ORDER BY created_at DESC LIMIT ?""",
+                (limit,),
+            ).fetchall()
+        return [list(row) for row in rows]
+
+    def service_appointment_count(self) -> int:
+        with self._connect() as conn:
+            row = conn.execute(
+                "SELECT COUNT(*) AS total FROM service_appointments"
+            ).fetchone()
+        return int(row["total"])
+
+    def update_service_appointment_status(
+        self,
+        appointment_id: str,
+        status: str,
+        provider_reference: str = "",
+    ) -> None:
+        allowed = {
+            "Pending provider confirmation",
+            "Confirmed",
+            "Declined",
+            "Cancelled",
+        }
+        if status not in allowed:
+            raise ValueError(f"Unsupported appointment status: {status}")
+        with self._connect() as conn:
+            cursor = conn.execute(
+                """UPDATE service_appointments
+                   SET status = ?, provider_reference = ?, updated_at = CURRENT_TIMESTAMP
+                   WHERE id = ?""",
+                (status, provider_reference.strip(), appointment_id),
+            )
+            if cursor.rowcount == 0:
+                raise ValueError("Appointment request was not found.")
 
     def recent_leads(self, limit: int = 20) -> list[list[Any]]:
         with self._connect() as conn:
