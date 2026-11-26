@@ -3,7 +3,9 @@ from __future__ import annotations
 import os
 import re
 from dataclasses import asdict, dataclass
+from datetime import datetime, timedelta
 from typing import Any
+from zoneinfo import ZoneInfo
 
 from knowledge_base import KnowledgeBase
 
@@ -44,7 +46,7 @@ class AahvaniAgent:
 
     @staticmethod
     def new_session() -> dict[str, Any]:
-        return {"lead": Lead().to_dict(), "messages": [], "lead_id": None}
+        return {"lead": Lead().to_dict(), "messages": [], "lead_id": None, "active_flow": None, "appointment_request": None, "appointment_confirmation_pending": False}
 
     @staticmethod
     def _extract_email(text: str) -> str:
@@ -321,6 +323,224 @@ Answer the product question in 1-3 concise sentences. Do not ask a follow-up que
         except Exception:
             return None
 
+
+    @staticmethod
+    def _is_appointment_intent(text: str) -> bool:
+        """Route explicit local-service appointment requests away from CRM sales discovery."""
+        lower = (text or "").lower()
+        if any(term in lower for term in (
+            "northstar crm", "crm software", "sales automation", "lead management",
+            "customer management software", "company data",
+        )):
+            return False
+        markers = (
+            "appointment", "dentist", "dental", "doctor", "clinic", "salon",
+            "haircut", "spa", "car service", "car servicing", "vehicle service",
+            "bike servicing", "lawyer", "legal consultation", "gym", "fitness consultation",
+            "tutor", "tuition", "book a service", "schedule a service",
+        )
+        return any(marker in lower for marker in markers)
+
+    @staticmethod
+    def _parse_appointment_date(text: str) -> str:
+        """Parse common, unambiguous date phrases using India local time."""
+        from datetime import date
+
+        today = datetime.now(ZoneInfo("Asia/Kolkata")).date()
+        lower = (text or "").lower()
+        if re.search(r"\bday after tomorrow\b", lower):
+            return (today + timedelta(days=2)).isoformat()
+        if re.search(r"\btomorrow\b", lower):
+            return (today + timedelta(days=1)).isoformat()
+        if re.search(r"\btoday\b", lower):
+            return today.isoformat()
+
+        iso_match = re.search(r"\b(20\d{2}-\d{2}-\d{2})\b", text or "")
+        if iso_match:
+            try:
+                return date.fromisoformat(iso_match.group(1)).isoformat()
+            except ValueError:
+                return ""
+
+        numeric_match = re.search(r"\b(\d{1,2})[/-](\d{1,2})[/-](\d{2,4})\b", text or "")
+        if numeric_match:
+            day, month, year = (int(part) for part in numeric_match.groups())
+            if year < 100:
+                year += 2000
+            try:
+                return date(year, month, day).isoformat()
+            except ValueError:
+                return ""
+
+        weekdays = {
+            "monday": 0, "tuesday": 1, "wednesday": 2, "thursday": 3,
+            "friday": 4, "saturday": 5, "sunday": 6,
+        }
+        match = re.search(r"\b(next\s+)?(monday|tuesday|wednesday|thursday|friday|saturday|sunday)\b", lower)
+        if match:
+            delta = (weekdays[match.group(2)] - today.weekday()) % 7
+            if delta == 0 or match.group(1):
+                delta += 7
+            return (today + timedelta(days=delta)).isoformat()
+        return ""
+
+    @staticmethod
+    def _parse_appointment_time(text: str) -> str:
+        raw = text or ""
+        match = re.search(
+            r"\b(?:at\s*)?(\d{1,2})(?::(\d{2}))?\s*(a\.?m\.?|p\.?m\.?)\b",
+            raw,
+            re.I,
+        )
+        if match:
+            hour = int(match.group(1))
+            minute = int(match.group(2) or 0)
+            suffix = match.group(3).replace(".", "").upper()
+            if 1 <= hour <= 12 and 0 <= minute <= 59:
+                hour = hour % 12 + (12 if suffix == "PM" else 0)
+                return datetime(2000, 1, 1, hour, minute).strftime("%I:%M %p")
+        military = re.search(r"\b(?:at\s*)?([01]?\d|2[0-3]):([0-5]\d)\b", raw, re.I)
+        if military:
+            hour, minute = int(military.group(1)), int(military.group(2))
+            return datetime(2000, 1, 1, hour, minute).strftime("%I:%M %p")
+        return ""
+
+    def _capture_appointment_details(self, text: str, request: dict[str, Any], session: dict[str, Any]) -> None:
+        lower = (text or "").lower()
+        service_rules = (
+            (("dental", "dentist", "tooth", "teeth"), "Healthcare", "Dental consultation"),
+            (("doctor", "clinic", "medical", "physician"), "Healthcare", "Medical consultation"),
+            (("salon", "haircut", "hair cut", "spa", "beauty"), "Salon & Spa", "Salon appointment"),
+            (("car service", "car servicing", "vehicle", "bike service", "bike servicing"), "Vehicle Service", "Vehicle servicing"),
+            (("lawyer", "legal", "advocate"), "Professional Consultation", "Legal consultation"),
+            (("gym", "fitness", "personal trainer"), "Fitness", "Fitness consultation"),
+            (("tutor", "tuition", "education", "coaching"), "Education", "Education consultation"),
+        )
+        for markers, category, service in service_rules:
+            if any(marker in lower for marker in markers):
+                request["service_category"] = category
+                if service == "Dental consultation" and any(term in lower for term in ("check-up", "check up", "checkup", "cleaning")):
+                    service = "Dental check-up"
+                elif service == "Salon appointment" and any(term in lower for term in ("haircut", "hair cut")):
+                    service = "Haircut appointment"
+                elif service == "Vehicle servicing" and "car" in lower:
+                    service = "Car servicing"
+                elif service == "Vehicle servicing" and "bike" in lower:
+                    service = "Bike servicing"
+                request["service_name"] = service
+                break
+
+        if not request.get("city"):
+            city_match = re.search(
+                r"\bin\s+([A-Za-z][A-Za-z ]{1,28}?)(?=\s+(?:on|tomorrow|today|next|at|for|with|around|by)\b|[,.!?]|$)",
+                text or "",
+                re.I,
+            )
+            if city_match:
+                city = " ".join(city_match.group(1).split()).strip()
+                if city.lower() not in {"the morning", "the afternoon", "the evening", "morning", "afternoon", "evening"} and not re.search(r"\d", city):
+                    request["city"] = city.title()
+            if not request.get("city"):
+                request["city"] = "Jalandhar"
+
+        parsed_date = self._parse_appointment_date(text)
+        if parsed_date:
+            request["preferred_date"] = parsed_date
+        parsed_time = self._parse_appointment_time(text)
+        if parsed_time:
+            request["preferred_time"] = parsed_time
+
+        name = self._extract_name(text)
+        if name:
+            request["customer_name"] = name
+        previous_assistant = next(
+            (item.get("content", "").lower() for item in reversed(session.get("messages", [])[:-1]) if item.get("role") == "assistant"),
+            "",
+        )
+        if not request.get("customer_name") and ("what name" in previous_assistant or "name should i put" in previous_assistant):
+            candidate = re.sub(r"[^A-Za-z '\-]", "", (text or "")).strip()
+            if 1 <= len(candidate.split()) <= 3 and candidate.lower() not in {"yes", "no", "okay", "ok"}:
+                request["customer_name"] = " ".join(part.capitalize() for part in candidate.split())
+
+        email = self._extract_email(text)
+        phone = self._extract_phone(text)
+        if email:
+            request["customer_email"] = email
+        if phone:
+            request["customer_phone"] = phone
+
+    def _respond_to_appointment(self, text: str, session: dict[str, Any]) -> tuple[str, dict[str, Any]]:
+        request = session.setdefault("appointment_request", {
+            "service_category": "",
+            "service_name": "",
+            "provider_name": "Provider to be selected",
+            "city": "Jalandhar",
+            "preferred_date": "",
+            "preferred_time": "",
+            "customer_name": "",
+            "customer_phone": "",
+            "customer_email": "",
+            "notes": "",
+        })
+
+        if session.get("appointment_confirmation_pending"):
+            if self._is_simple_yes(text):
+                session["appointment_to_save"] = dict(request)
+                session["appointment_confirmation_pending"] = False
+                reply = "Thanks. I'm submitting your appointment request to the AAHVANI CRM now."
+                session.setdefault("messages", []).append({"role": "assistant", "content": reply})
+                return reply, session
+            if self._is_simple_no(text):
+                session["active_flow"] = None
+                session["appointment_request"] = None
+                session["appointment_confirmation_pending"] = False
+                reply = "No problem. I have not submitted anything. Tell me when you would like to try again."
+                session.setdefault("messages", []).append({"role": "assistant", "content": reply})
+                return reply, session
+            session["appointment_confirmation_pending"] = False
+
+        self._capture_appointment_details(text, request, session)
+        if not request.get("service_category") or not request.get("service_name"):
+            reply = "Certainly. What type of appointment or local service do you need — for example, a dentist, doctor, salon, vehicle service, gym or consultation?"
+        elif not request.get("preferred_date"):
+            reply = "What date would you prefer? You can say a specific date, tomorrow or a weekday."
+        elif not request.get("preferred_time"):
+            reply = "What time would you prefer? Please include AM or PM, for example, 11:00 AM."
+        elif not request.get("customer_name"):
+            reply = "What name should I put on the appointment request?"
+        elif not (request.get("customer_phone") or request.get("customer_email")):
+            reply = "What phone number or email address can the provider use to contact you?"
+        else:
+            session["appointment_confirmation_pending"] = True
+            date_display = request["preferred_date"]
+            try:
+                date_display = datetime.strptime(date_display, "%Y-%m-%d").strftime("%d %b %Y")
+            except ValueError:
+                pass
+            contact = request.get("customer_phone") or request.get("customer_email")
+            reply = (
+                "Please review your appointment request: "
+                f"{request['service_name']} ({request['service_category']}); "
+                f"provider: {request.get('provider_name') or 'Provider to be selected'}; "
+                f"city: {request.get('city') or 'Jalandhar'}; "
+                f"date: {date_display}; time: {request['preferred_time']}; "
+                f"name: {request['customer_name']}; contact: {contact}. "
+                "I have not checked provider availability. "
+                "To confirm, should I submit this appointment request to the CRM now?"
+            )
+
+        lead = session.setdefault("lead", Lead().to_dict())
+        if request.get("customer_name") and not lead.get("name"):
+            lead["name"] = request["customer_name"]
+        if request.get("customer_phone") and not lead.get("phone"):
+            lead["phone"] = request["customer_phone"]
+        if request.get("customer_email") and not lead.get("email"):
+            lead["email"] = request["customer_email"]
+        lead["need"] = f"{request.get('service_category', '')}: {request.get('service_name', '')}".strip(": ")
+        lead["lead_score"], lead["qualification"] = self._score(lead)
+        session.setdefault("messages", []).append({"role": "assistant", "content": reply})
+        return reply, session
+
     def respond(self, user_text: str, session: dict[str, Any] | None = None) -> tuple[str, dict[str, Any]]:
         session = session or self.new_session()
         lead = session.setdefault("lead", Lead().to_dict())
@@ -331,8 +551,13 @@ Answer the product question in 1-3 concise sentences. Do not ask a follow-up que
 
         pending_field = session.get("pending_field")
         messages.append({"role": "user", "content": text})
-        self._extract_facts(text, lead)
         lower = text.lower()
+
+        if session.get("active_flow") == "appointment" or self._is_appointment_intent(text):
+            session["active_flow"] = "appointment"
+            return self._respond_to_appointment(text, session)
+
+        self._extract_facts(text, lead)
 
         # Interpret short answers using the field AAHVANI asked about last.
         if pending_field == "budget" and not lead.get("budget"):
@@ -368,8 +593,8 @@ Answer the product question in 1-3 concise sentences. Do not ask a follow-up que
         if greeting_only:
             session["pending_field"] = "need"
             reply = (
-                "Hello! I'm AAHVANI AI, your sales assistant. What would you like "
-                "your company to manage or improve with a CRM?"
+                "Hello! I'm AAHVANI AI. I can help you submit local service appointment "
+                "requests or answer questions about Northstar CRM. What would you like to do?"
             )
         elif self._is_product_question(text):
             retrieved = self.knowledge_base.search(text, top_k=1)
@@ -391,8 +616,17 @@ Answer the product question in 1-3 concise sentences. Do not ask a follow-up que
                     f"To understand your requirement better, "
                     f"{follow_up[0].lower() + follow_up[1:]}"
                 )
-        else:
+        elif any(marker in lower for marker in (
+            "crm", "company", "business", "sales", "leads", "customer data",
+            "budget", "software", "automation", "follow-up",
+        )):
             reply = self._next_discovery_question(lead, session)
+        else:
+            reply = (
+                "I can help arrange a local service appointment request, or answer approved "
+                "questions about Northstar CRM. I cannot complete external bookings or payments "
+                "in this demo. What would you like help with?"
+            )
 
         lead["lead_score"], lead["qualification"] = self._score(lead)
         messages.append({"role": "assistant", "content": reply})
