@@ -415,6 +415,20 @@ Answer the product question in 1-3 concise sentences. Do not ask a follow-up que
             f"Qualification: {lead.get('qualification', 'Nurture')} ({lead.get('lead_score', 0)}/100)",
             f"Conversation turns: {len(customer_messages)}",
         ]
+        appointments = session.get("appointments", [])
+        if appointments:
+            lines.append("Service appointment requests:")
+            for item in appointments:
+                lines.append(
+                    "- "
+                    + f"{item.get('service_category', 'Service')}: {item.get('service_name', 'Appointment')} "
+                    + f"with {item.get('provider_name') or 'provider to be selected'} in "
+                    + f"{item.get('city', 'Jalandhar')} on "
+                    + f"{item.get('preferred_date', 'date not recorded')} at "
+                    + f"{item.get('preferred_time', 'time not recorded')} "
+                    + f"[{item.get('status', 'Pending provider confirmation')}] "
+                    + f"(Request: {item.get('appointment_id', 'not available')})"
+                )
         if customer_messages:
             lines.append("Customer statements: " + " | ".join(customer_messages[-3:]))
         return "\n".join(lines)
