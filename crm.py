@@ -213,6 +213,10 @@ class CRM:
         }
         if status not in allowed:
             raise ValueError(f"Unsupported appointment status: {status}")
+        if status == "Confirmed" and not provider_reference.strip():
+            raise ValueError(
+                "Add a provider confirmation reference or confirmation note before marking Confirmed."
+            )
         with self._connect() as conn:
             cursor = conn.execute(
                 """UPDATE service_appointments
