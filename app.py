@@ -14,11 +14,12 @@ from crm import CRM
 
 try:
     from fastrtc import WebRTC
-    from live_voice import AahvaniLiveHandler
+    from live_voice import AahvaniLiveHandler, send_live_text as send_live_text_to_session
     LIVE_VOICE_AVAILABLE = True
 except ImportError as live_import_error:
     WebRTC = None
     AahvaniLiveHandler = None
+    send_live_text_to_session = None
     LIVE_VOICE_AVAILABLE = False
     LIVE_VOICE_IMPORT_ERROR = str(live_import_error)
 
@@ -31,6 +32,16 @@ SAMPLE_SLOTS = ["Demo slot 1 — 11:00 AM", "Demo slot 2 — 2:00 PM", "Demo slo
 
 def initial_state():
     return agent.new_session()
+
+
+def send_live_text_from_ui(text):
+    cleaned = (text or "").strip()
+    if not cleaned:
+        return "", "Type a message before sending."
+    if not LIVE_VOICE_AVAILABLE or send_live_text_to_session is None:
+        return cleaned, "Live Voice Mode is not available in this installation."
+    success, status = send_live_text_to_session(cleaned)
+    return ("" if success else cleaned), status
 
 
 def display_lead(session):
@@ -458,7 +469,61 @@ label, .label-wrap span { color: #6e6052 !important; font-weight: 700 !important
     border-radius: 999px !important;
 }
 #speech-output { border-radius: 14px !important; }
-#crm-table { border-radius: 14px; overflow: hidden; background: #fffdf9 !important; color: #211a14 !important; }
+#crm-table {
+    color-scheme: light !important;
+    border-radius: 14px;
+    overflow: hidden;
+    background: #fffdf9 !important;
+    color: #30251b !important;
+}
+#crm-table .table-wrap,
+#crm-table .dataframe,
+#crm-table table,
+#crm-table thead,
+#crm-table tbody,
+#crm-table tr,
+#crm-table th,
+#crm-table td,
+#crm-table [role="grid"],
+#crm-table [role="row"],
+#crm-table [role="gridcell"],
+#crm-table [role="columnheader"] {
+    background-color: #fffdf9 !important;
+    color: #30251b !important;
+    border-color: #e7d8c8 !important;
+}
+#crm-table thead th,
+#crm-table [role="columnheader"] {
+    background-color: #efe1cf !important;
+    color: #563d20 !important;
+    font-weight: 750 !important;
+}
+#crm-table tbody tr:nth-child(even) td,
+#crm-table tbody [role="row"]:nth-child(even) [role="gridcell"] {
+    background-color: #f8f2ea !important;
+}
+#crm-table tbody tr:hover td,
+#crm-table tbody [role="row"]:hover [role="gridcell"] {
+    background-color: #f1e5d7 !important;
+}
+#crm-table input {
+    background: #fffdf9 !important;
+    color: #30251b !important;
+}
+.live-text-row { align-items: stretch !important; gap: 10px !important; margin-top: 10px !important; }
+#live-text-input textarea {
+    min-height: 44px !important;
+    background: #fffdf9 !important;
+}
+#live-text-send {
+    min-width: 145px;
+}
+.live-control-hint {
+    margin-top: 5px;
+    color: #776a5d !important;
+    font-size: 12px;
+    line-height: 1.5;
+}
 footer { opacity: .48 !important; }
 
 @media (max-width: 850px) {
@@ -544,8 +609,9 @@ with gr.Blocks(
             </div>
         </div>
         <div class="live-mode-note">
-            Live mode streams microphone audio to Gemini. Customer speech is transcribed for lead capture and CRM updates.
-            Use headphones for the clearest conversation.
+            Click <strong>Start conversation</strong> and AAHVANI will greet you automatically.
+            Then speak naturally, or type a message below. You can interrupt the agent while it is speaking.
+            Customer transcripts are automatically saved to the local CRM. Use headphones for the clearest audio.
         </div>
         """)
         if LIVE_VOICE_AVAILABLE:
@@ -553,12 +619,36 @@ with gr.Blocks(
                 label="Speak Up",
                 mode="send-receive",
                 modality="audio",
-                variant="textbox",
+                variant="wave",
+                button_labels={
+                    "start": "Start conversation",
+                    "stop": "End conversation",
+                    "waiting": "Connecting…",
+                },
                 elem_id="aahvani-live-webrtc",
             )
             live_status = gr.Markdown(
-                "Ready. Press the microphone control to start a live conversation.",
+                "Ready. Click Start conversation; AAHVANI will greet you, then listen for your reply.",
                 elem_classes=["status-note"],
+            )
+            with gr.Row(elem_classes=["live-text-row"]):
+                live_text_input = gr.Textbox(
+                    placeholder="Or type a message to AAHVANI…",
+                    show_label=False,
+                    lines=1,
+                    scale=8,
+                    elem_id="live-text-input",
+                )
+                live_text_send = gr.Button(
+                    "Send to AAHVANI",
+                    variant="secondary",
+                    scale=2,
+                    elem_id="live-text-send",
+                )
+            gr.Markdown(
+                "Lead details are saved automatically as the customer speaks or types. "
+                "Demo appointments still require selecting a slot and clicking **Confirm demo booking**.",
+                elem_classes=["live-control-hint"],
             )
             live_handler = AahvaniLiveHandler()
             live_audio.stream(
@@ -670,6 +760,16 @@ with gr.Blocks(
             ],
             queue=False,
             show_progress="hidden",
+        )
+        live_text_send.click(
+            send_live_text_from_ui,
+            inputs=[live_text_input],
+            outputs=[live_text_input, live_status],
+        )
+        live_text_input.submit(
+            send_live_text_from_ui,
+            inputs=[live_text_input],
+            outputs=[live_text_input, live_status],
         )
     send.click(chat, [message, chatbot, session_state], outputs)
     message.submit(chat, [message, chatbot, session_state], outputs)
