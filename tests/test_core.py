@@ -465,7 +465,7 @@ class LiveOrderConfirmationTests(unittest.TestCase):
         handler = self._handler()
         handler.chat_history = [
             {"role": "assistant", "content": "You selected this phone. Shall I place this simulated order?"},
-            {"role": "user", "content": "yes"},
+            {"role": "user", "content": "haan kar do"},
         ]
         self.assertTrue(handler._has_explicit_order_confirmation())
 
