@@ -341,7 +341,7 @@ status and be transparent that it is a simulated order.
         session["_text_tool_events"] = []
         return answer
     except Exception:
-        logger.exception("Gemini Text Chat request failed")
+        logging.getLogger(__name__).exception("Gemini Text Chat request failed")
         raise
 
 
