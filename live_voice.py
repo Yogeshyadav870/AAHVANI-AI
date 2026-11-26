@@ -81,6 +81,8 @@ class AahvaniLiveHandler(AsyncStreamHandler):
         self.recommendations_markdown = "Your product recommendations will appear here."
         self.order_success_markdown = "No demo order has been placed in this conversation yet."
         self._audio_frames_sent = 0
+        self._last_typed_text = ""
+        self._last_typed_at = 0.0
 
     def copy(self) -> "AahvaniLiveHandler":
         return AahvaniLiveHandler()
@@ -98,6 +100,12 @@ class AahvaniLiveHandler(AsyncStreamHandler):
                 break
         if not typed_text:
             return
+
+        now = time.monotonic()
+        if typed_text == self._last_typed_text and now - self._last_typed_at < 1.5:
+            return
+        self._last_typed_text = typed_text
+        self._last_typed_at = now
 
         loop = getattr(self, "_loop", None)
         if loop is None or self.session is None:
@@ -265,7 +273,7 @@ addresses or other payment credentials. Do not provide payment or delivery guara
                     "category": category, "budget_max": budget, "brand": brand,
                     "use_case": primary_use, "recommendations": products,
                     "selected_product": None, "awaiting_selection": bool(products),
-                    "awaiting_confirmation": False,
+                    "awaiting_confirmation": False, "order_idempotency_key": "",
                 })
                 self.recommendations_markdown = self.catalogue.format_recommendations(products)
                 await self._publish_ui()
@@ -295,6 +303,9 @@ addresses or other payment credentials. Do not provide payment or delivery guara
                     shopping["selected_product"] = product
                     shopping["awaiting_selection"] = False
                     shopping["awaiting_confirmation"] = True
+                    shopping["order_idempotency_key"] = (
+                        f"{self._session_id}:{uuid.uuid4()}"
+                    )
                     result = {
                         "ok": True, "product_id": product["id"],
                         "title": product["title"], "brand": product["brand"],
@@ -315,7 +326,7 @@ addresses or other payment credentials. Do not provide payment or delivery guara
                             product=selected,
                             quantity=int(args.get("quantity") or 1),
                             customer_name="",
-                            idempotency_key=f"{self._session_id}:{product_id}",
+                            idempotency_key=shopping.get("order_idempotency_key") or f"{self._session_id}:{uuid.uuid4()}",
                         )
                         shopping["order"] = order
                         self.order_success_markdown = (
