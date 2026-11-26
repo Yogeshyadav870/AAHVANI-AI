@@ -107,7 +107,7 @@ GEMINI_LIVE_VOICE=Kore
 
 Create a key in [Google AI Studio](https://aistudio.google.com/app/apikey). Keep it only in the local .env file; never commit it or paste it into browser-side code.
 
-Restart with python app.py. The dashboard provides two explicit conversation modes. **Text Chat** uses the deterministic local shopping workflow and remains available even when Live Voice is disconnected. **Live Speaking** uses the microphone and Gemini Live for spoken conversation; its transcript appears in the Live Speaking chat history, and Gemini's audio reply plays automatically. The speaker mute control is hidden to keep the microphone interaction simple. Use headphones to reduce acoustic echo.
+Restart with python app.py. The dashboard provides two explicit conversation modes. **Text Chat** uses a stateful Gemini chat session with catalogue search, product selection, simulated checkout and order-tracking tools. It remains available even when Live Speaking is disconnected. **Live Speaking** uses the microphone and Gemini Live for spoken conversation; its transcript appears in the Live Speaking chat history, and Gemini's audio reply plays automatically. The speaker mute control is hidden to keep the microphone interaction simple. Use headphones to reduce acoustic echo.
 
 ### Text-only fallback
 
