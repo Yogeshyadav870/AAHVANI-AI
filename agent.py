@@ -430,18 +430,17 @@ Answer the product question in 1-3 concise sentences. Do not ask a follow-up que
                 request["service_name"] = service
                 break
 
+        city_match = re.search(
+            r"\bin\s+([A-Za-z][A-Za-z ]{1,28}?)(?=\s+(?:on|tomorrow|today|next|at|for|with|around|by)\b|[,.!?]|$)",
+            text or "",
+            re.I,
+        )
+        if city_match:
+            city = " ".join(city_match.group(1).split()).strip()
+            if city.lower() not in {"the morning", "the afternoon", "the evening", "morning", "afternoon", "evening"} and not re.search(r"\d", city):
+                request["city"] = city.title()
         if not request.get("city"):
-            city_match = re.search(
-                r"\bin\s+([A-Za-z][A-Za-z ]{1,28}?)(?=\s+(?:on|tomorrow|today|next|at|for|with|around|by)\b|[,.!?]|$)",
-                text or "",
-                re.I,
-            )
-            if city_match:
-                city = " ".join(city_match.group(1).split()).strip()
-                if city.lower() not in {"the morning", "the afternoon", "the evening", "morning", "afternoon", "evening"} and not re.search(r"\d", city):
-                    request["city"] = city.title()
-            if not request.get("city"):
-                request["city"] = "Jalandhar"
+            request["city"] = "Jalandhar"
 
         parsed_date = self._parse_appointment_date(text)
         if parsed_date:
