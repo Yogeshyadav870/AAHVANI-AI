@@ -563,7 +563,6 @@ with gr.Blocks(title=APP_NAME) as demo:
                 outputs=[live_audio],
                 time_limit=900,
                 concurrency_limit=1,
-                show_progress="hidden",
             )
         else:
             gr.Markdown(
