@@ -134,10 +134,24 @@ def shopping_chat(message, history, session):
 
 def update_demo_order_status(order_ref, status):
     try:
-        crm.update_demo_order_status(str(order_ref or "").strip(), status)
-        return crm.recent_demo_orders(), f"Order **{str(order_ref).strip()}** updated to **{status}**."
+        reference = str(order_ref or "").strip()
+        crm.update_demo_order_status(reference, status)
+        record = crm.get_demo_order(reference)
+        receipt = (
+            "## Order status updated\\n\\n"
+            f"**Order ID:** {record['order_ref']}\\n\\n"
+            f"**Product:** {record['product_title']}\\n\\n"
+            f"**Total:** ₹{int(record['total_price']):,}\\n\\n"
+            f"**Current status:** {record['status']}\\n\\n"
+            "Simulated order only — no real shipment exists."
+        ) if record else "No demo order has been placed in this conversation yet."
+        return (
+            crm.recent_demo_orders(),
+            f"Order **{reference}** updated to **{status}**.",
+            receipt,
+        )
     except ValueError as exc:
-        return crm.recent_demo_orders(), f"**Could not update order:** {exc}"
+        return crm.recent_demo_orders(), f"**Could not update order:** {exc}", "No order status update was made."
 
 
 def refresh_demo_orders():
@@ -884,7 +898,7 @@ with gr.Blocks(
     update_order_btn.click(
         update_demo_order_status,
         [order_reference, order_status],
-        [orders_table, order_update_message],
+        [orders_table, order_update_message, order_confirmation],
     )
 
 if __name__ == "__main__":
