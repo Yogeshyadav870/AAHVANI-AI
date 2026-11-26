@@ -77,12 +77,12 @@ Point out the lead record, qualification status, score and dashboard counts. Thi
 Use this only after installing `requirements-live.txt`, configuring a valid local `GEMINI_API_KEY`, and testing the microphone and speakers.
 
 1. Open **Speak Up — Live Voice Mode**.
-2. Press the WebRTC microphone control and allow browser microphone access.
+2. Allow browser microphone access and click **Start conversation**. AAHVANI should greet the customer automatically.
 3. Say: "Hello, I'm Rahul. I run a digital marketing agency and want to improve how we follow up with leads."
-4. Continue with a natural follow-up exchange. Let AAHVANI ask about needs, budget, authority and timeline.
-5. Interrupt AAHVANI while it is speaking with a short clarification to demonstrate barge-in/turn-taking.
-6. Point to the conversation transcript and Lead Intelligence panel. Input transcripts are passed to the existing lead extractor, BANT-inspired score and SQLite CRM.
-7. End the live stream. Use the existing dashboard controls to inspect/save the lead, select a sample slot and explicitly confirm the demo booking.
+4. Continue with a natural follow-up exchange. Let AAHVANI ask about needs, budget, authority and timeline. You can also type a message into the separate live text field; it is sent to the same active Gemini Live session.
+5. Watch the status line: it changes to **AAHVANI is speaking** while audio arrives and **Your turn** after the response. Interrupt AAHVANI while it is speaking with a short clarification to demonstrate barge-in/turn-taking.
+6. Point to the conversation transcript and Lead Intelligence panel. Input transcripts and typed messages are passed to the existing lead extractor, BANT-inspired score and SQLite CRM.
+7. End the live stream. Use the existing dashboard controls to inspect the lead, select a sample slot and explicitly confirm the demo booking.
 
 Explain the stages accurately: FastRTC/WebRTC streams browser audio to the Python server; Gemini Live processes audio in the cloud and returns native speech audio. The server also receives input/output transcripts. The local API key is never sent to browser JavaScript. Live mode uses the Gemini API and is subject to current quota and usage pricing. This is browser-based live voice, not PSTN telephony or a connected phone number.
 
