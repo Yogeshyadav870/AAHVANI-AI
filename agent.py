@@ -159,12 +159,15 @@ class AahvaniAgent:
             "records", "follow-up", "follow up", "book crm",
         )
         if (
-            not lead.get("need")
-            and not self._is_product_question(text)
+            not self._is_product_question(text)
             and any(marker in lower for marker in need_markers)
             and len(text.split()) > 2
         ):
-            lead["need"] = text.strip()
+            existing_need = str(lead.get("need") or "").strip()
+            if not existing_need:
+                lead["need"] = text.strip()
+            elif lower not in existing_need.lower() and existing_need.lower() not in lower:
+                lead["need"] = f"{existing_need}; {text.strip()}"
 
         lead["sentiment"] = self._sentiment(text)
         lead["lead_score"], lead["qualification"] = self._score(lead)
@@ -223,6 +226,11 @@ class AahvaniAgent:
                 return question
 
         session["pending_field"] = "demo"
+        if session.get("contact_skipped") and not (lead.get("email") or lead.get("phone")):
+            return (
+                "No problem. We can continue discussing the CRM. To save a demo booking later, "
+                "the dashboard will need an email address or phone number for confirmation."
+            )
         return (
             f"Thanks, {lead.get('name') or 'there'}. I have the key details for your CRM requirement. "
             f"Your current lead score is {lead.get('lead_score', 0)}/100 "
