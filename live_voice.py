@@ -131,7 +131,7 @@ question. Never claim to be a human salesperson.
         model = os.getenv("GEMINI_LIVE_MODEL", DEFAULT_MODEL).strip() or DEFAULT_MODEL
         voice = os.getenv("GEMINI_LIVE_VOICE", DEFAULT_VOICE).strip() or DEFAULT_VOICE
 
-        self._client = genai.Client(api_key=api_key)
+        # Gemini Live is served on v1beta; google-genai 3.x defaults to v1.\n        self._client = genai.Client(\n            api_key=api_key,\n            http_options=types.HttpOptions(api_version="v1beta"),\n        )
         config = types.LiveConnectConfig(
             response_modalities=["AUDIO"],
             system_instruction=self._system_instruction(),
@@ -326,11 +326,6 @@ question. Never claim to be a human salesperson.
             self._session_context = None
             self.session = None
 
-    def shutdown(self) -> None:
+    async def shutdown(self) -> None:
         self.stop_event.set()
-        try:
-            loop = self.loop
-            if loop and loop.is_running():
-                loop.create_task(self._close_session())
-        except Exception:
-            logger.debug("Could not schedule Gemini Live cleanup", exc_info=True)
+        await self._close_session()
