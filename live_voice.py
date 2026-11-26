@@ -79,6 +79,7 @@ class AahvaniLiveHandler(AsyncStreamHandler):
         self._session_id = str(uuid.uuid4())
         self.status_message = "Ready. Start the conversation to connect to Gemini Live."
         self.recommendations_markdown = "Your product recommendations will appear here."
+        self.order_success_markdown = "No demo order has been placed in this conversation yet."
         self._audio_frames_sent = 0
 
     def copy(self) -> "AahvaniLiveHandler":
@@ -317,6 +318,15 @@ addresses or other payment credentials. Do not provide payment or delivery guara
                             idempotency_key=f"{self._session_id}:{product_id}",
                         )
                         shopping["order"] = order
+                        self.order_success_markdown = (
+                            "## ✅ Demo order placed successfully!\n\n"
+                            f"**Order ID:** {order['order_ref']}\n\n"
+                            f"**Product:** {order['product_title']}\n\n"
+                            f"**Quantity:** {order['quantity']}\n\n"
+                            f"**Total:** ₹{int(order['total_price']):,}\n\n"
+                            f"**Status:** {order['status']}\n\n"
+                            "Simulated order only — no payment was collected and no real shipment was created."
+                        )
                         shopping["awaiting_confirmation"] = False
                         shopping["awaiting_selection"] = False
                         result = {
@@ -567,14 +577,12 @@ addresses or other payment credentials. Do not provide payment or delivery guara
 
     async def _publish_ui(self) -> None:
         shopping = self.session_state.get("shopping", {})
-        order = shopping.get("order") or {}
         values = (
             self.status_message,
             list(self.chat_history),
             self.recommendations_markdown,
+            self.order_success_markdown,
             self.crm.recent_demo_orders(),
-            order.get("order_ref", ""),
-            order.get("status", ""),
         )
         await self.output_queue.put(AdditionalOutputs(*values))
 
