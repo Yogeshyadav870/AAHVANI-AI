@@ -35,7 +35,8 @@ class ShoppingCatalogue:
         "Realme", "Vivo", "Oppo", "Poco", "Google", "Asus", "Acer", "Lenovo",
         "HP", "Dell", "MSI", "JBL", "Sony", "boAt", "Noise", "Amazfit",
         "LG", "Canon", "Nikon", "Whirlpool", "IFB", "Haier", "Bose", "Nintendo",
-        "Microsoft", "Logitech",
+        "Microsoft", "Logitech", "Epson", "Nike", "Adidas", "Puma", "Samsonite",
+        "Wildcraft", "Skybags", "Featherlite", "Green Soul", "IKEA",
     )
     USE_CASES = {
         "gaming": ("gaming", "game", "games", "gamer", "gpu", "fps", "khel"),
