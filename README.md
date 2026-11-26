@@ -12,8 +12,9 @@
 - Basic keyword-based sentiment signal.
 - SQLite CRM persistence for leads and sample demo appointments.
 - Call summary generation.
-- Optional microphone transcription using Faster-Whisper.
+- Voice-first turn-taking: record a message, transcribe it with Faster-Whisper, send it to the agent, and generate a spoken reply in one action.
 - Optional spoken AI responses using Edge TTS (internet required).
+- Live dashboard counters for total leads, qualified leads, and demo bookings.
 
 ## Demo product data
 
@@ -46,7 +47,7 @@ Gemini-powered responses (requires a Gemini API key):
 pip install -r requirements-gemini.txt
 ```
 
-Voice input/output (speech recognition may download a model on first use; Edge TTS requires internet):
+Voice input/output (speech recognition downloads its model on first use; Edge TTS requires internet). After recording, review the transcription and click **Send voice message & hear reply** to run a complete spoken turn:
 
 ```bash
 pip install -r requirements-voice.txt
