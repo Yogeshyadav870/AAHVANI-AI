@@ -8,8 +8,11 @@
 flowchart TD
     Customer[Customer: text or microphone] --> UI[Gradio interface]
     UI -->|Typed text| Agent[Python sales agent]
-    UI -->|Optional audio| STT[Faster-Whisper: local STT]
+    UI -->|Batch audio fallback| STT[Faster-Whisper: local STT]
     STT --> Agent
+    UI <-->|Speak Up: WebRTC audio| Live[FastRTC live handler]
+    Live <-->|Bidirectional audio| GeminiLive[Gemini Live API]
+    Live -->|Input transcription| Agent
     Agent <--> Memory[Gradio session state]
     Agent --> Retriever[Custom lexical FAQ retriever]
     Retriever --> KB[Local Markdown product FAQ]
@@ -26,17 +29,25 @@ flowchart TD
     TTS --> Customer
 ```
 
+### Live Voice Mode (optional)
+
+The dashboard includes a Speak Up control backed by FastRTC/WebRTC. Each connection gets a dedicated asynchronous handler and Gemini Live session. The browser streams microphone audio to the Python server; the server forwards mono PCM16 audio at 16 kHz to Gemini Live. The model returns native PCM16 audio at 24 kHz, which FastRTC streams back to the browser. Gemini Live handles voice activity and can interrupt its generated speech when the customer starts speaking.
+
+Input and output audio transcription are enabled. The input transcript is passed through the existing Python lead extractor, BANT-inspired scoring and keyword sentiment logic. Captured prospect data is persisted to the same SQLite CRM and updates the existing dashboard fields and metrics. The live session's transcript is also reflected in the Gradio conversation panel. Demo booking remains an explicit user action in the existing dashboard so the model cannot claim a sample appointment has been booked before confirmation.
+
+The Live API key is read from the server-side `.env` setting `GEMINI_API_KEY`; it is never embedded in browser code. The live model and voice can be changed using `GEMINI_LIVE_MODEL` and `GEMINI_LIVE_VOICE`. Current defaults are `gemini-3.8-live` and `Kore`.
+
 ## 2. Implemented request flow
 
-1. The Gradio UI accepts typed text or optional microphone audio.
-2. Faster-Whisper transcribes audio locally when the optional voice dependencies are installed. The selected model is cached in the running process after its first load.
+1. The Gradio UI accepts typed text, optional batch microphone audio, or continuous Speak Up audio over WebRTC.
+2. In the batch voice fallback, Faster-Whisper transcribes audio locally when the optional voice dependencies are installed. In Live Voice Mode, FastRTC streams audio to Gemini Live and native audio responses stream back through WebRTC.
 3. The agent appends the message to the session history and extracts available facts such as name, email, phone, company, budget, authority and timeline using regular expressions and keyword rules.
 4. The local Markdown FAQ is divided into sections. A custom term-frequency/inverse-document-frequency-style lexical scoring function ranks relevant sections and returns the top matches.
 5. If Gemini is configured, the retrieved context can be supplied to the response-generation prompt. The default demo has no Gemini key configured and therefore uses deterministic local response logic.
 6. The agent calculates a BANT-inspired score and a simple keyword-based sentiment signal.
 7. The lead is saved to SQLite. A user can select a sample demo slot; the application validates that a contact method exists and persists the appointment linked to that lead.
 8. The summary function creates a structured summary from the current session. SQL queries update the total-lead, qualified-lead and booked-demo counters.
-9. For a voice turn, Edge TTS (online) converts the generated reply into an MP3 file.
+9. For a batch voice turn, Edge TTS (online) converts the generated reply into an MP3 file. In Live Voice Mode, Gemini Live generates native streaming audio directly.
 
 ## 3. Important implementation boundaries
 
@@ -44,9 +55,9 @@ flowchart TD
 - **Retrieval:** This is local lexical FAQ retrieval, not embedding-based semantic search or a vector database. The optional Gemini path can use retrieved text as generation context.
 - **Lead scoring:** The score is a transparent heuristic, not a trained conversion prediction model.
 - **Sentiment:** The current classifier is keyword-based, not a trained sentiment model.
-- **Voice:** The prototype supports a one-turn record → transcribe → respond → speak workflow. It is not a live phone connection or full-duplex voice agent.
+- **Voice:** The optional Live Voice Mode supports browser-based bidirectional audio, turn-taking and interruptions. It is not a PSTN phone connection. The batch Faster-Whisper + Edge TTS path remains available.
 - **Multilingual:** Whisper supports multilingual speech recognition, but the complete multilingual experience, including language-specific response generation and TTS voice selection, has not been validated in this MVP.
-- **Integrations:** The demo uses fictional Northstar CRM content and sample slots. It is not connected to an external CRM or real calendar.
+- **Integrations:** The demo uses fictional Northstar CRM content and sample slots. It is not connected to an external CRM or real calendar. The live audio connection is browser WebRTC, not a phone provider.
 
 ## 4. Production design for up to 100,000 registered users
 
