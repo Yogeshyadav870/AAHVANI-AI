@@ -158,7 +158,12 @@ class AahvaniAgent:
             "crm", "store", "storing", "company data", "customer data",
             "records", "follow-up", "follow up", "book crm",
         )
-        if not lead.get("need") and any(marker in lower for marker in need_markers) and len(text.split()) > 2:
+        if (
+            not lead.get("need")
+            and not self._is_product_question(text)
+            and any(marker in lower for marker in need_markers)
+            and len(text.split()) > 2
+        ):
             lead["need"] = text.strip()
 
         lead["sentiment"] = self._sentiment(text)
@@ -205,10 +210,15 @@ class AahvaniAgent:
             ("budget", "What approximate budget should I note, or is your budget flexible?"),
             ("authority", "Will you make the final purchase decision, or will someone else need to approve it?"),
             ("timeline", "When are you hoping to start using the CRM?"),
-            ("email", "What email address should we use for the demo confirmation and follow-up?"),
+            ("email", "What email address or phone number should we use for the demo confirmation and follow-up?"),
         )
         for key, question in questions:
-            if not lead.get(key) and not (key == "email" and session.get("contact_skipped")):
+            field_missing = (
+                not (lead.get("email") or lead.get("phone"))
+                if key == "email"
+                else not lead.get(key)
+            )
+            if field_missing and not (key == "email" and session.get("contact_skipped")):
                 session["pending_field"] = key
                 return question
 
@@ -252,7 +262,7 @@ Recent conversation:
 {transcript}
 
 Customer's latest message: {user_text}
-Write the next assistant response in 2-4 sentences. Ask at most one useful follow-up question."""
+Answer the product question in 1-3 concise sentences. Do not ask a follow-up question; the application will ask the next sales-discovery question. Do not reproduce Markdown headings or dump the full knowledge-base section."""
         try:
             response = self.client.models.generate_content(model=self.MODEL, contents=prompt)
             answer = getattr(response, "text", None)
