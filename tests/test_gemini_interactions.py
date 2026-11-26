@@ -15,9 +15,16 @@ class FakeInteractions:
     def create(self, **kwargs):
         self.calls.append(kwargs)
         if len(self.calls) == 1:
-            return SimpleNamespace(id="interaction-first", steps=self.first_steps)
+            if self.first_steps:
+                return SimpleNamespace(id="interaction-first", steps=self.first_steps)
+            return SimpleNamespace(
+                id="interaction-first",
+                output_text=self.final_text,
+                steps=[],
+            )
         return SimpleNamespace(
             id="interaction-final",
+            output_text=self.final_text,
             steps=[
                 SimpleNamespace(
                     type="model_output",
@@ -73,11 +80,45 @@ class GeminiInteractionsTests(unittest.TestCase):
             fake_interactions.calls[1]["input"][0]["type"],
             "function_result",
         )
+        # The Interactions API accepts the tool result as a normal JSON object.
+        self.assertIsInstance(fake_interactions.calls[1]["input"][0]["result"], dict)
+        self.assertTrue(fake_interactions.calls[1]["input"][0]["result"]["ok"])
+        self.assertTrue(fake_interactions.calls[0]["store"])
+        self.assertTrue(fake_interactions.calls[1]["store"])
         self.assertEqual(
             session["gemini_previous_interaction_id"],
             "interaction-final",
         )
         self.assertEqual(session["_text_tool_events"], [])
+
+    def test_follow_up_turn_always_includes_new_user_input_and_previous_id(self):
+        fake_interactions = FakeInteractions(
+            first_steps=[],
+            final_text="Of course. Is Samsung your preferred brand?",
+        )
+        fake_client = SimpleNamespace(interactions=fake_interactions)
+        session = app.initial_state()
+        session["gemini_previous_interaction_id"] = "previous-interaction-123"
+
+        with patch("app._get_gemini_text_client", return_value=fake_client):
+            answer = app.gemini_shopping_reply(
+                "I want a Samsung phone under 25000.",
+                session,
+            )
+
+        self.assertEqual(answer, "Of course. Is Samsung your preferred brand?")
+        self.assertEqual(
+            fake_interactions.calls[0]["previous_interaction_id"],
+            "previous-interaction-123",
+        )
+        self.assertEqual(
+            fake_interactions.calls[0]["input"],
+            "I want a Samsung phone under 25000.",
+        )
+        self.assertEqual(
+            session["gemini_previous_interaction_id"],
+            "interaction-first",
+        )
 
     def test_checkout_tool_cannot_place_order_in_same_turn_as_selection(self):
         product = {
