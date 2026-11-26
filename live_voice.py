@@ -22,7 +22,8 @@ logger = logging.getLogger(__name__)
 
 INPUT_SAMPLE_RATE = 16000
 OUTPUT_SAMPLE_RATE = 24000
-DEFAULT_MODEL = "gemini-3.8-live"
+# Prefer the Live model that is currently responding reliably to realtimeInput audio.
+DEFAULT_MODEL = "gemini-3.1-flash-live-preview"
 DEFAULT_VOICE = "Kore"
 _AVAILABLE_CATEGORIES = (
     "smartphone", "laptop", "headphones", "tablet", "smartwatch",
@@ -63,7 +64,10 @@ class AahvaniLiveHandler(AsyncStreamHandler):
                 "order": None,
             },
         }
-        self.chat_history: list[dict[str, str]] = []
+        self.chat_history: list[dict[str, str]] = [{
+            "role": "assistant",
+            "content": "Live Speaking is ready. Press the microphone to connect, then tell me what you want to buy.",
+        }]
         self.input_queue: asyncio.Queue[bytes] = asyncio.Queue(maxsize=32)
         self.output_queue: asyncio.Queue[Any] = asyncio.Queue(maxsize=96)
         self.stop_event = asyncio.Event()
@@ -87,6 +91,17 @@ class AahvaniLiveHandler(AsyncStreamHandler):
 
     def copy(self) -> "AahvaniLiveHandler":
         return AahvaniLiveHandler()
+
+    @staticmethod
+    def _model_candidates(requested_model: str) -> list[str]:
+        """Prefer Gemini 3.1 for realtime microphone input while 3.8 Live is unstable."""
+        preferred = "gemini-3.1-flash-live-preview"
+        current = (requested_model or preferred).strip()
+        if current == "gemini-3.8-live":
+            return [preferred, current]
+        if current == preferred:
+            return [preferred, "gemini-3.8-live"]
+        return [current, preferred]
 
     def set_args(self, args: list[Any]) -> None:
         """FastRTC's integrated textbox supplies WebRTCData(textbox, audio, webrtc_id)."""
@@ -438,9 +453,7 @@ addresses or other payment credentials. Do not provide payment or delivery guara
                     self._get_order_status_declaration(),
                 ])],
             )
-            models_to_try = [requested_model]
-            if requested_model == "gemini-3.8-live":
-                models_to_try.append("gemini-3.1-flash-live-preview")
+            models_to_try = self._model_candidates(requested_model)
             last_error = None
             connected_model = None
             for candidate in models_to_try:
@@ -570,6 +583,9 @@ addresses or other payment credentials. Do not provide payment or delivery guara
                         input_text = getattr(input_transcription, "text", None) if input_transcription else None
                         if input_text:
                             await self._record_customer_message(input_text)
+                            # Show the customer's transcript immediately, even if the
+                            # model takes longer than expected to produce its reply.
+                            await self._publish_ui()
                     if tool_call is not None:
                         await self._execute_tool_calls(tool_call)
                         if server is None:
