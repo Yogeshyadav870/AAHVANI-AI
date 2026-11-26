@@ -77,10 +77,10 @@ Point out the lead record, qualification status, score and dashboard counts. Thi
 Use this only after installing `requirements-live.txt`, configuring a valid local `GEMINI_API_KEY`, and testing the microphone and speakers.
 
 1. Open **Speak Up — Live Voice Mode**.
-2. Allow browser microphone access and click **Start conversation**. AAHVANI should greet the customer automatically.
+2. Allow browser microphone access and click the integrated microphone icon. AAHVANI should greet the customer automatically.
 3. Say: "Hello, I'm Rahul. I run a digital marketing agency and want to improve how we follow up with leads."
-4. Continue with a natural follow-up exchange. Let AAHVANI ask about needs, budget, authority and timeline. You can also type a message into the separate live text field; it is sent to the same active Gemini Live session.
-5. Watch the status line: it changes to **AAHVANI is speaking** while audio arrives and **Your turn** after the response. Interrupt AAHVANI while it is speaking with a short clarification to demonstrate barge-in/turn-taking.
+4. Continue with a natural follow-up exchange. Let AAHVANI ask about needs, budget, authority and timeline. You can also type in the component's built-in textbox and press Enter; this sends the message to the same active Gemini Live session.
+5. Use the built-in controls: microphone toggles the customer's microphone, speaker toggles AAHVANI's audio, and the square button ends the session. Watch the status line: it changes to **AAHVANI is speaking** while audio arrives and **Your turn** after the response. Interrupt AAHVANI while it is speaking with a short clarification to demonstrate barge-in/turn-taking.
 6. Point to the conversation transcript and Lead Intelligence panel. Input transcripts and typed messages are passed to the existing lead extractor, BANT-inspired score and SQLite CRM.
 7. End the live stream. Use the existing dashboard controls to inspect the lead, select a sample slot and explicitly confirm the demo booking.
 
