@@ -75,16 +75,32 @@ class AahvaniAgent:
 
     @staticmethod
     def _extract_budget(text: str) -> str:
-        patterns = [
+        flexible = bool(re.search(
+            r"\bflexib\w*\b|\bno fixed budget\b|\bnot decided\b",
+            text,
+            re.I,
+        ))
+        explicit_patterns = (
             r"(?:₹\s*|rs\.?\s*)(\d[\d,]*(?:\.\d+)?)\s*(lakhs?|lacs?|lakh|lac|crores?|crore|k|m)?",
-            r"(\d+(?:\.\d+)?)\s*(lakh|lakhs|lac|lacs|crore|crores)\b",
-            r"\b(no fixed budget|not decided|budget is flexible|flexible budget)\b",
-        ]
-        for pattern in patterns:
+            r"(\d+(?:\.\d+)?)\s*(lakhs?|lacs?|lakh|lac|crores?|crore|k|m)\b",
+        )
+        for pattern in explicit_patterns:
             match = re.search(pattern, text, re.I)
             if match:
-                return match.group(0).strip()
-        return ""
+                amount = match.group(0).strip()
+                return f"{amount} (flexible)" if flexible else amount
+
+        # Also accept an unqualified numeric budget such as "55000 and it's flexible".
+        bare_amount = re.search(r"(?<![\w+])(\d{3,}(?:,\d{3})*(?:\.\d+)?)(?!\w)", text)
+        if bare_amount:
+            try:
+                number = float(bare_amount.group(1).replace(",", ""))
+                formatted = f"{number:,.0f}" if number.is_integer() else f"{number:,.2f}".rstrip("0").rstrip(".")
+            except ValueError:
+                formatted = bare_amount.group(1)
+            return f"{formatted} (flexible)" if flexible else formatted
+
+        return "Flexible (no fixed budget)" if flexible else ""
 
     @staticmethod
     def _extract_timeline(text: str) -> str:
@@ -95,10 +111,24 @@ class AahvaniAgent:
     @staticmethod
     def _extract_authority(text: str) -> str:
         lower = text.lower()
-        if any(term in lower for term in ["i am the owner", "i'm the owner", "founder", "co-founder", "decision maker", "final decision", "i decide", "i make the decision"]):
+        decision_maker_patterns = (
+            r"\b(?:ceo|chief executive officer|founder|co-founder|business owner|owner|proprietor)\b",
+            r"\bdecision maker\b|\bfinal decision\b|\bi decide\b|\bi make the decision\b",
+            r"\b(?:i am|i'm|i m)\s+(?:the\s+)?(?:final\s+)?(?:approver|authorized signatory)\b",
+            r"\b(?:i will approve it|i approve(?: it)?|i can approve(?: it)?|i have final approval|i make the final call)\b",
+        )
+        if any(re.search(pattern, lower) for pattern in decision_maker_patterns):
             return "Decision maker"
-        if any(term in lower for term in ["my manager", "my boss", "management decides", "need approval", "not the decision maker"]):
+
+        approval_patterns = (
+            r"\bmy manager\b|\bmy boss\b|\bmanagement decides\b",
+            r"\bneed(?:s)? (?:someone else's )?approval\b|\bnot the decision maker\b",
+            r"\bsomeone else (?:will|must|needs to) approve\b",
+            r"\bi need to (?:ask|check with|get approval from)\b",
+        )
+        if any(re.search(pattern, lower) for pattern in approval_patterns):
             return "Influencer / requires approval"
+
         if any(term in lower for term in ["team lead", "department head", "director", "manager"]):
             return "Manager / evaluator"
         return ""
@@ -241,7 +271,7 @@ class AahvaniAgent:
     @staticmethod
     def _is_simple_yes(text: str) -> bool:
         return bool(re.fullmatch(
-            r"\s*(?:yes|yeah|yep|yup|correct|sure|i do|i will|that's right|that is right)[.! ]*\s*",
+            r"\s*(?:(?:yes|yeah|yep|yup|correct|sure)(?:[, ]+(?:i\s+(?:will|do|am|can)|i\s+make\s+the\s+decision))?|i\s+(?:will|do|am|can)|i\s+will\s+approve(?:\s+it)?|i\s+approve(?:\s+it)?|that's right|that is right)[.! ]*\s*",
             text,
             re.I,
         ))
