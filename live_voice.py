@@ -5,7 +5,9 @@ import logging
 import os
 import re
 import time
+from datetime import datetime
 from typing import Any
+from zoneinfo import ZoneInfo
 
 import numpy as np
 from fastrtc import AdditionalOutputs, AsyncStreamHandler, wait_for_item
@@ -113,6 +115,7 @@ class AahvaniLiveHandler(AsyncStreamHandler):
     def _system_instruction(self) -> str:
         knowledge = self.agent.knowledge_base.documents
         approved_product_knowledge = "\n\n".join(knowledge)
+        current_local_date = datetime.now(ZoneInfo("Asia/Kolkata")).date().isoformat()
         return f"""
 You are AAHVANI AI, a warm, professional, natural-sounding AI appointment assistant for Jalandhar.
 You help customers request appointments across service categories such as healthcare,
@@ -120,6 +123,8 @@ salons, vehicle services, professional consultations, fitness, education and oth
 local services. Keep spoken replies concise and conversational. Ask one useful
 question at a time. Match the customer's language, including English, Hindi, or
 natural Hinglish when appropriate.
+Current local date: {current_local_date}. Time zone: Asia/Kolkata. Interpret relative
+dates using this local date, and always read back the resulting calendar date.
 
 BRAND NAME PRONUNCIATION — IMPORTANT
 The brand name AAHVANI is pronounced "AAH-vuh-nee" (आह्वनी), followed by
@@ -292,11 +297,13 @@ question. Never claim to be a human salesperson.
                 "shall i place",
             )
         )
+        normalized_user = re.sub(r"[,!?]", "", last_user).strip()
         customer_confirmed = bool(re.fullmatch(
             r"(?:yes|yeah|yep|sure|please do|go ahead|confirm|confirmed|"
             r"book it|submit it|do it|that's correct|that is correct|"
-            r"yes please|yes book it|please book it)[.! ]*",
-            last_user,
+            r"yes please|yes i confirm|yes confirm|yes book it|"
+            r"please book it|yes go ahead)[. ]*",
+            normalized_user,
         ))
         return assistant_requested_confirmation and customer_confirmed
 
@@ -358,16 +365,21 @@ question. Never claim to be a human salesperson.
                         notes=str(args.get("notes") or "").strip(),
                         source="Gemini Live Voice",
                     )
-                    self.session_state.setdefault("appointments", []).append({
-                        "appointment_id": record["id"],
-                        "service_category": record["service_category"],
-                        "service_name": record["service_name"],
-                        "provider_name": record["provider_name"],
-                        "city": record["city"],
-                        "preferred_date": record["preferred_date"],
-                        "preferred_time": record["preferred_time"],
-                        "status": record["status"],
-                    })
+                    saved_appointments = self.session_state.setdefault("appointments", [])
+                    if not any(
+                        item.get("appointment_id") == record["id"]
+                        for item in saved_appointments
+                    ):
+                        saved_appointments.append({
+                            "appointment_id": record["id"],
+                            "service_category": record["service_category"],
+                            "service_name": record["service_name"],
+                            "provider_name": record["provider_name"],
+                            "city": record["city"],
+                            "preferred_date": record["preferred_date"],
+                            "preferred_time": record["preferred_time"],
+                            "status": record["status"],
+                        })
                     result = {
                         "ok": True,
                         "appointment_id": record["id"],
