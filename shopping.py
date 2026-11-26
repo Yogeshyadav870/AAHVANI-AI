@@ -182,10 +182,6 @@ class ShoppingAgent:
     """Conversational fallback for text chat; uses the same catalogue as Gemini Live."""
 
     YES = re.compile(
-        r"^(?:yes|yeah|yep|sure|confirm|confirmed|go ahead|place it|buy it|order it|please do|yes please|do it)[.! ]*$",
-        re.I,
-    )
-    YES = re.compile(
         r"^(?:yes|yeah|yep|sure|confirm|confirmed|go ahead|place it|buy it|order it|please do|yes please|do it|haan|han|ji haan|jee haan|haan ji|kar do|order kar do|haan kar do)[.! ]*$",
         re.I,
     )
