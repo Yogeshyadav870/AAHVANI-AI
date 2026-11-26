@@ -126,9 +126,9 @@ class ShoppingCatalogue:
         # must not accidentally match "art" and trigger the creative-use path.
         for use_case, markers in cls.USE_CASES.items():
             for marker in markers:
-                if re.search(r"(?<!\\w)" + re.escape(marker) + r"(?!\\w)", lower):
+                if re.search(r"(?<!\w)" + re.escape(marker) + r"(?!\w)", lower):
                     return use_case
-        if re.search(r"\\b(no preference|anything|all round|all-round|general use)\\b", lower):
+        if re.search(r"\b(no preference|anything|all round|all-round|general use)\b, lower):
             return "everyday"
         return ""
 
