@@ -232,7 +232,7 @@ addresses or other payment credentials. Do not provide payment or delivery guara
                            "shall i place the order", "confirm this order")
         )
         confirmed = bool(re.fullmatch(
-            r"(?:yes|yeah|yep|sure|go ahead|confirm|confirmed|place it|buy it|order it|yes please|please do|do it)[.! ]*",
+            r"(?:yes|yeah|yep|sure|go ahead|confirm|confirmed|place it|buy it|order it|yes please|please do|do it|haan|han|ji haan|jee haan|haan ji|kar do|order kar do|haan kar do)[.! ]*",
             re.sub(r"[,!?]", "", last_user).strip(),
         ))
         return prompt_seen and confirmed
