@@ -14,6 +14,7 @@ AAHVANI AI is an evaluation-ready MVP for an AI sales sales assistant. It suppor
 | Material | File |
 |---|---|
 | One-page project report | [`project_report.md`](project_report.md) |
+| End-to-end project workflow graph | [`architecture/workflow.md`](architecture/workflow.md) |
 | Visual system architecture diagram | [`architecture/system_architecture.svg`](architecture/system_architecture.svg) |
 | Architecture, deployment, security and scale plan | [`architecture/system_architecture.md`](architecture/system_architecture.md) |
 | End-to-end practical demo script | [`DEMO_WALKTHROUGH.md`](DEMO_WALKTHROUGH.md) |
