@@ -623,6 +623,21 @@ label, .label-wrap span { color: #6e6052 !important; font-weight: 700 !important
     font-size: 12px;
     line-height: 1.5;
 }
+#shopping-chat, #shopping-message, #shopping-recommendations, #order-confirmation,
+#demo-orders-table, #aahvani-shopping-webrtc {
+    border-radius: 16px !important;
+}
+#shopping-chat {
+    background: #fffdf9 !important;
+    border: 1px solid #e7d8c8 !important;
+}
+#shopping-recommendations, #order-confirmation {
+    color: #30251b !important;
+    line-height: 1.65 !important;
+}
+#shopping-recommendations h3 { color: #563d20 !important; margin-bottom: 6px !important; }
+#shopping-recommendations hr { border-color: #e7d8c8 !important; }
+#demo-orders-table { overflow: hidden; background: #fffdf9 !important; }
 footer { opacity: .48 !important; }
 
 @media (max-width: 850px) {
@@ -745,16 +760,6 @@ with gr.Blocks(
                     "Text shopping is ready. Add GEMINI_API_KEY and install requirements-live.txt for live voice + typing in one box.",
                     elem_classes=["status-note"],
                 )
-                send.click(
-                    shopping_chat,
-                    [message, chatbot, session_state],
-                    [chatbot, session_state, gr.skip(), gr.skip(), gr.skip()],
-                )
-                message.submit(
-                    shopping_chat,
-                    [message, chatbot, session_state],
-                    [chatbot, session_state, gr.skip(), gr.skip(), gr.skip()],
-                )
 
             with gr.Row():
                 refresh_orders_btn = gr.Button("Refresh my orders", variant="secondary")
@@ -832,6 +837,17 @@ with gr.Blocks(
                     show_progress="hidden",
                 )
 
+    if not (LIVE_VOICE_AVAILABLE and os.getenv("GEMINI_API_KEY", "").strip()):
+        send.click(
+            shopping_chat,
+            [message, chatbot, session_state],
+            [chatbot, session_state, recommendations_panel, order_confirmation, orders_table],
+        )
+        message.submit(
+            shopping_chat,
+            [message, chatbot, session_state],
+            [chatbot, session_state, recommendations_panel, order_confirmation, orders_table],
+        )
     refresh_orders_btn.click(refresh_demo_orders, [], [orders_table])
     update_order_btn.click(
         update_demo_order_status,
@@ -845,46 +861,3 @@ if __name__ == "__main__":
         server_port=int(os.getenv("PORT", "7860")),
         share=False,
     )
-
-
-# AAHVANI shopping experience: retain the original warm beige, cream and gold design.
-# The Live Voice component includes its own integrated text composer and microphone.
-# These selectors style that one shared input without changing the project's palette.
-#shopping-chat, #shopping-message, #shopping-recommendations, #order-confirmation,
-#demo-orders-table, #aahvani-shopping-webrtc {
-    border-radius: 16px !important;
-}
-#shopping-chat {
-    background: #fffdf9 !important;
-    border: 1px solid #e7d8c8 !important;
-}
-#shopping-recommendations, #order-confirmation {
-    color: #30251b !important;
-    line-height: 1.65 !important;
-}
-#shopping-recommendations h3 {
-    color: #563d20 !important;
-    margin-bottom: 6px !important;
-}
-#shopping-recommendations hr {
-    border-color: #e7d8c8 !important;
-}
-#aahvani-shopping-webrtc .input-container {
-    align-items: center !important;
-    gap: 9px !important;
-    padding: 10px 12px !important;
-    border: 1px solid #e7d5c0 !important;
-    border-radius: 18px !important;
-    background: #fffdf9 !important;
-}
-#aahvani-shopping-webrtc .input-container textarea {
-    min-height: 46px !important;
-    border: 1px solid #e7d5c0 !important;
-    border-radius: 13px !important;
-    background: #fffaf3 !important;
-    color: #30251b !important;
-}
-#demo-orders-table {
-    overflow: hidden;
-    background: #fffdf9 !important;
-}
