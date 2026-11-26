@@ -461,6 +461,16 @@ class LiveOrderConfirmationTests(unittest.TestCase):
         handler.chat_history = []
         return handler
 
+    def test_gemini_38_request_prefers_realtime_responsive_31_model(self):
+        self.assertEqual(
+            AahvaniLiveHandler._model_candidates("gemini-3.8-live"),
+            ["gemini-3.1-flash-live-preview", "gemini-3.8-live"],
+        )
+
+    def test_live_model_default_is_realtime_responsive_31_model(self):
+        self.assertEqual(AahvaniLiveHandler._model_candidates("gemini-3.1-flash-live-preview")[0],
+                         "gemini-3.1-flash-live-preview")
+
     def test_order_requires_a_separate_assistant_confirmation_prompt(self):
         handler = self._handler()
         handler.chat_history = [
