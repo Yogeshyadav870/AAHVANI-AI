@@ -86,6 +86,29 @@ Use this only after installing `requirements-live.txt`, configuring a valid loca
 
 Explain the stages accurately: FastRTC/WebRTC streams browser audio to the Python server; Gemini Live processes audio in the cloud and returns native speech audio. The server also receives input/output transcripts. The local API key is never sent to browser JavaScript. Live mode uses the Gemini API and is subject to current quota and usage pricing. This is browser-based live voice, not PSTN telephony or a connected phone number.
 
+## Gemini Live — Jalandhar service appointment request
+
+Use this scenario to demonstrate Gemini function calling and the new CRM appointment table. Use synthetic contact information only.
+
+**Example voice request:**
+
+```text
+Hi, I need a dental consultation in Jalandhar next Wednesday at 11:30 AM.
+I don't have a clinic preference. My name is Rahul and my phone number is 9876543210.
+```
+
+1. Start Live Voice Mode and speak the request naturally.
+2. AAHVANI should collect any missing details (service category, service type, provider preference, city, specific date/time, customer name, and phone/email).
+3. AAHVANI must read the complete request back and ask: **"To confirm, should I submit this appointment request to the CRM now?"**
+4. Say **"Yes, go ahead."** Only after this explicit confirmation should Gemini call the server-side `save_appointment_request` function.
+5. Show the new row in **Jalandhar service appointment requests**. It contains the service, provider preference, city, requested date/time, customer contact, request ID and status.
+6. Click **Generate summary** to show the appointment details in the call summary.
+7. The initial status is **Pending provider confirmation**. This is a saved request, not a confirmed provider booking. After contacting the provider and receiving confirmation, paste the request ID into the CRM status control, choose **Confirmed**, and add the provider reference or confirmation note.
+
+**Explain the integration:** Gemini Live returns a structured function call. The Python server validates the customer confirmation and required fields, saves the customer as a CRM lead, creates a row in `service_appointments`, and sends the tool result back to Gemini. Gemini then speaks the result to the customer. A duplicate tool retry returns the existing request instead of creating another row.
+
+**Current limitation:** The application does not yet search a live Jalandhar provider directory, check real provider availability, contact the provider automatically, or reserve an external calendar slot. Those need provider directory data and provider/calendar integrations. Never present a pending request as an appointment confirmation.
+
 ## Batch voice fallback
 
 If Live Voice Mode is unavailable, use the existing optional batch voice path:
