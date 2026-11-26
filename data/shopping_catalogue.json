@@ -836,5 +836,376 @@
       "portable"
     ],
     "recommendation_reason": "Flexible handheld and home-console experience."
+  },
+  {
+    "id": "tv-samsung-crystal",
+    "category": "television",
+    "title": "Crystal UHD Smart TV (Demo)",
+    "brand": "Samsung",
+    "price_inr": 26999,
+    "icon": "📺",
+    "specs": [
+      "43-inch 4K display class",
+      "Smart TV apps",
+      "HDR support class",
+      "HDMI connectivity"
+    ],
+    "use_cases": [
+      "movies",
+      "gaming",
+      "everyday"
+    ],
+    "tags": [
+      "tv",
+      "streaming",
+      "4k"
+    ],
+    "recommendation_reason": "A balanced smart TV example for movies, streaming and everyday viewing."
+  },
+  {
+    "id": "tv-lg-ur",
+    "category": "television",
+    "title": "UHD Smart TV Series (Demo)",
+    "brand": "LG",
+    "price_inr": 24999,
+    "icon": "📺",
+    "specs": [
+      "43-inch 4K display class",
+      "Smart platform",
+      "HDR support class",
+      "Voice assistant compatibility"
+    ],
+    "use_cases": [
+      "movies",
+      "everyday"
+    ],
+    "tags": [
+      "tv",
+      "streaming",
+      "4k"
+    ],
+    "recommendation_reason": "A value-oriented 4K smart TV example for everyday entertainment."
+  },
+  {
+    "id": "tv-sony-bravia",
+    "category": "television",
+    "title": "BRAVIA Smart TV Series (Demo)",
+    "brand": "Sony",
+    "price_inr": 42999,
+    "icon": "📺",
+    "specs": [
+      "43-inch 4K display class",
+      "Picture processing class",
+      "Smart TV apps",
+      "Gaming-ready HDMI class"
+    ],
+    "use_cases": [
+      "movies",
+      "gaming",
+      "content"
+    ],
+    "tags": [
+      "tv",
+      "cinema",
+      "gaming"
+    ],
+    "recommendation_reason": "A more premium TV example for picture quality and gaming."
+  },
+  {
+    "id": "printer-hp-ink",
+    "category": "printer",
+    "title": "Smart Tank Ink Printer (Demo)",
+    "brand": "HP",
+    "price_inr": 11999,
+    "icon": "🖨️",
+    "specs": [
+      "Print · scan · copy",
+      "Refillable ink tank",
+      "Wi-Fi connectivity",
+      "Home office class"
+    ],
+    "use_cases": [
+      "study",
+      "work",
+      "everyday"
+    ],
+    "tags": [
+      "printer",
+      "documents",
+      "wireless"
+    ],
+    "recommendation_reason": "A multifunction home/office printer for regular document use."
+  },
+  {
+    "id": "printer-canon-pixma",
+    "category": "printer",
+    "title": "PIXMA All-in-One Printer (Demo)",
+    "brand": "Canon",
+    "price_inr": 7999,
+    "icon": "🖨️",
+    "specs": [
+      "Print · scan · copy",
+      "Colour inkjet",
+      "Wi-Fi connectivity",
+      "Compact footprint"
+    ],
+    "use_cases": [
+      "study",
+      "camera",
+      "everyday"
+    ],
+    "tags": [
+      "printer",
+      "photos",
+      "home"
+    ],
+    "recommendation_reason": "A compact option for home documents and occasional photo printing."
+  },
+  {
+    "id": "printer-epson-eco",
+    "category": "printer",
+    "title": "EcoTank Printer Series (Demo)",
+    "brand": "Epson",
+    "price_inr": 14999,
+    "icon": "🖨️",
+    "specs": [
+      "Refillable ink tank",
+      "High-volume print class",
+      "Print · scan · copy",
+      "Wi-Fi connectivity"
+    ],
+    "use_cases": [
+      "work",
+      "study"
+    ],
+    "tags": [
+      "printer",
+      "bulk printing",
+      "office"
+    ],
+    "recommendation_reason": "A refillable ink-tank example for customers who print frequently."
+  },
+  {
+    "id": "shoe-nike-run",
+    "category": "footwear",
+    "title": "Running Shoe Series (Demo)",
+    "brand": "Nike",
+    "price_inr": 4999,
+    "icon": "👟",
+    "specs": [
+      "Road-running design",
+      "Cushioned midsole class",
+      "Breathable upper",
+      "Everyday training"
+    ],
+    "use_cases": [
+      "sports",
+      "fitness",
+      "travel"
+    ],
+    "tags": [
+      "shoes",
+      "running",
+      "sports"
+    ],
+    "recommendation_reason": "An example running shoe for regular training and active use."
+  },
+  {
+    "id": "shoe-adidas-walk",
+    "category": "footwear",
+    "title": "Walking Shoe Series (Demo)",
+    "brand": "Adidas",
+    "price_inr": 3999,
+    "icon": "👟",
+    "specs": [
+      "Walking-focused design",
+      "Lightweight construction",
+      "Cushioned footbed",
+      "Breathable upper"
+    ],
+    "use_cases": [
+      "casual",
+      "sports",
+      "everyday"
+    ],
+    "tags": [
+      "shoes",
+      "walking",
+      "comfort"
+    ],
+    "recommendation_reason": "A comfortable everyday walking shoe example."
+  },
+  {
+    "id": "shoe-puma-casual",
+    "category": "footwear",
+    "title": "Casual Sneaker Series (Demo)",
+    "brand": "Puma",
+    "price_inr": 2999,
+    "icon": "👟",
+    "specs": [
+      "Casual sneaker design",
+      "Rubber outsole",
+      "Padded collar",
+      "Everyday styling"
+    ],
+    "use_cases": [
+      "casual",
+      "everyday",
+      "travel"
+    ],
+    "tags": [
+      "shoes",
+      "sneakers",
+      "daily wear"
+    ],
+    "recommendation_reason": "A casual sneaker example for daily wear."
+  },
+  {
+    "id": "bag-samsonite-travel",
+    "category": "backpack",
+    "title": "Travel Laptop Backpack (Demo)",
+    "brand": "Samsonite",
+    "price_inr": 3999,
+    "icon": "🎒",
+    "specs": [
+      "Laptop compartment class",
+      "Water-resistant fabric",
+      "Multiple organiser pockets",
+      "Travel-friendly design"
+    ],
+    "use_cases": [
+      "travel",
+      "work",
+      "everyday"
+    ],
+    "tags": [
+      "bag",
+      "laptop",
+      "travel"
+    ],
+    "recommendation_reason": "A practical backpack example for commuting and travel."
+  },
+  {
+    "id": "bag-wildcraft-college",
+    "category": "backpack",
+    "title": "College Backpack Series (Demo)",
+    "brand": "Wildcraft",
+    "price_inr": 1999,
+    "icon": "🎒",
+    "specs": [
+      "Large main compartment",
+      "Padded laptop sleeve class",
+      "Bottle pockets",
+      "Daily-use fabric"
+    ],
+    "use_cases": [
+      "study",
+      "everyday"
+    ],
+    "tags": [
+      "bag",
+      "college",
+      "student"
+    ],
+    "recommendation_reason": "A practical college backpack example with everyday storage."
+  },
+  {
+    "id": "bag-skybags-school",
+    "category": "backpack",
+    "title": "Everyday Backpack Series (Demo)",
+    "brand": "Skybags",
+    "price_inr": 1499,
+    "icon": "🎒",
+    "specs": [
+      "Lightweight design",
+      "Multiple compartments",
+      "Padded shoulder straps",
+      "Casual styling"
+    ],
+    "use_cases": [
+      "study",
+      "everyday",
+      "travel"
+    ],
+    "tags": [
+      "bag",
+      "school",
+      "daily"
+    ],
+    "recommendation_reason": "An affordable everyday backpack example."
+  },
+  {
+    "id": "furniture-featherlite",
+    "category": "furniture",
+    "title": "Ergonomic Office Chair (Demo)",
+    "brand": "Featherlite",
+    "price_inr": 8999,
+    "icon": "🪑",
+    "specs": [
+      "Adjustable height",
+      "Lumbar support class",
+      "Breathable mesh back",
+      "Work-from-home design"
+    ],
+    "use_cases": [
+      "work",
+      "coding",
+      "comfort"
+    ],
+    "tags": [
+      "chair",
+      "office",
+      "ergonomic"
+    ],
+    "recommendation_reason": "A work-focused chair example prioritising posture and comfort."
+  },
+  {
+    "id": "furniture-greensoul",
+    "category": "furniture",
+    "title": "Gaming Chair Series (Demo)",
+    "brand": "Green Soul",
+    "price_inr": 11999,
+    "icon": "🪑",
+    "specs": [
+      "High-back design",
+      "Reclining class",
+      "Cushioned seat",
+      "Gaming and desk use"
+    ],
+    "use_cases": [
+      "gaming",
+      "comfort"
+    ],
+    "tags": [
+      "chair",
+      "gaming",
+      "ergonomic"
+    ],
+    "recommendation_reason": "A gaming-oriented chair example for longer desk sessions."
+  },
+  {
+    "id": "furniture-study",
+    "category": "furniture",
+    "title": "Compact Study Desk (Demo)",
+    "brand": "IKEA",
+    "price_inr": 5999,
+    "icon": "🪑",
+    "specs": [
+      "Compact work surface",
+      "Storage shelf class",
+      "Home study design",
+      "Easy assembly"
+    ],
+    "use_cases": [
+      "study",
+      "work",
+      "everyday"
+    ],
+    "tags": [
+      "desk",
+      "table",
+      "student"
+    ],
+    "recommendation_reason": "A compact desk example for a home study or work corner."
   }
 ]
