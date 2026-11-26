@@ -78,9 +78,10 @@ For the sample signals above, the BANT-inspired score is 100/100: Need 30 + Budg
 - **Gradio:** interactive interface and session state.
 - **SQLite:** local lead and appointment persistence.
 - **Custom lexical retrieval:** local FAQ search; no vector database is used.
-- **Gemini API:** optional response generation; requires an API key.
-- **Faster-Whisper:** optional local speech recognition.
-- **Edge TTS:** optional online speech synthesis.
+- **Gemini Live API:** optional low-latency speech-to-speech voice conversations.
+- **FastRTC/WebRTC:** continuous browser microphone and speaker transport.
+- **Gemini text API:** optional response generation for the text-chat path.
+- **Faster-Whisper + Edge TTS:** optional batch voice fallback (local STT, online TTS).
 - **unittest:** automated checks for core agent and CRM behaviour.
 
 ## Run locally on Windows
@@ -122,7 +123,7 @@ Install the live dependencies:
 pip install -r requirements-live.txt
 ```
 
-Create a local `.env` file from the example and add your key there (never paste it into GitHub or browser JavaScript):
+Create a local `.env` file from the example and add your key there (never paste it into GitHub or browser JavaScript). Create a key in [Google AI Studio](https://aistudio.google.com/app/apikey):
 
 ```powershell
 copy .env.example .env
