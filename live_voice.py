@@ -507,8 +507,10 @@ addresses or other payment credentials. Do not provide payment or delivery guara
             self.status_message = "Connect the microphone/live session first, then type or speak in this same chat."
             await self._publish_ui()
             return
-        await self.session.send_realtime_input(text=cleaned)
+        # Record before sending so a very fast Gemini function call can verify
+        # the explicit customer confirmation against the latest conversation turn.
         await self._record_customer_message(cleaned)
+        await self.session.send_realtime_input(text=cleaned)
         self.status_message = "Message sent to AAHVANI. Preparing a spoken reply…"
         await self._publish_ui()
 
@@ -549,16 +551,20 @@ addresses or other payment credentials. Do not provide payment or delivery guara
                     if self.stop_event.is_set():
                         break
                     tool_call = getattr(response, "tool_call", None)
+                    server = getattr(response, "server_content", None)
+                    # Some Live events can carry input transcription and a function
+                    # call together. Record the customer turn before validating tools.
+                    if server is not None:
+                        input_transcription = getattr(server, "input_transcription", None)
+                        input_text = getattr(input_transcription, "text", None) if input_transcription else None
+                        if input_text:
+                            await self._record_customer_message(input_text)
                     if tool_call is not None:
                         await self._execute_tool_calls(tool_call)
-                        continue
-                    server = getattr(response, "server_content", None)
+                        if server is None:
+                            continue
                     if server is None:
                         continue
-                    input_transcription = getattr(server, "input_transcription", None)
-                    input_text = getattr(input_transcription, "text", None) if input_transcription else None
-                    if input_text:
-                        await self._record_customer_message(input_text)
                     output_transcription = getattr(server, "output_transcription", None)
                     output_text = getattr(output_transcription, "text", None) if output_transcription else None
                     if output_text:
