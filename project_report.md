@@ -10,7 +10,7 @@ Small and medium businesses receive inquiries through websites, social media and
 
 ## End-to-end workflow
 
-Customer text or optional microphone audio → Gradio interface → session-aware Python sales agent → local FAQ retrieval → customer fact extraction → BANT-inspired lead score and keyword sentiment → user-confirmed sample appointment → SQLite CRM → call summary and dashboard metrics. Optional voice input uses Faster-Whisper for local speech-to-text; optional Edge TTS creates spoken responses online.
+Customer text or live microphone audio → Gradio/FastRTC WebRTC interface → Gemini Live speech-to-speech session → input transcript → Python fact extraction → BANT-inspired lead score and keyword sentiment → user-confirmed sample appointment → SQLite CRM → call summary and dashboard metrics. A separate batch voice fallback remains available using local Faster-Whisper and online Edge TTS.
 
 ## Technical implementation
 
@@ -22,10 +22,10 @@ The initial target customers are agencies and other small or medium businesses w
 
 ## Scale, infrastructure, deployment and security
 
-The current MVP runs locally with Gradio, in-process session state and SQLite; it has not been load-tested for 100,000 users. The proposed production design uses stateless containerised API services behind an API gateway, separate scalable voice workers, PostgreSQL for transactions, Redis for sessions, a managed vector database for semantic retrieval, queues for background jobs, monitoring and automated backups. Capacity planning must use peak concurrent calls and audio/request throughput, not registered users alone.
+The current MVP runs locally with Gradio, in-process session state, SQLite and an optional single-user browser WebRTC voice session; it has not been load-tested for 100,000 users. The proposed production design uses stateless containerised API services behind an API gateway, separate scalable voice workers, PostgreSQL for transactions, Redis for sessions, a managed vector database for semantic retrieval, queues for background jobs, monitoring and automated backups. Capacity planning must use peak concurrent calls and audio/request throughput, not registered users alone.
 
 Production security would include TLS, encryption at rest, tenant isolation, authentication, role-based access, secret management, explicit recording consent, audit logs and retention/deletion controls. A staged deployment would begin with a limited customer pilot, then add integrations, observability, concurrency testing and autoscaling before wider release.
 
 ## Scope and limitations
 
-This prototype demonstrates the core business workflow. It does not include live telephony, a real calendar, an external CRM, full-duplex voice, validated end-to-end multilingual support, production authentication or a 100,000-user deployment. Gemini and voice features are optional adapters; the demo fallback remains usable without a Gemini key. The accompanying repository includes source code, an architecture diagram and a practical demo walkthrough.
+This prototype demonstrates the core business workflow. It does not include PSTN telephony, a real calendar, an external CRM, production authentication or a 100,000-user deployment. The optional Gemini Live mode supports browser-based continuous audio, not a phone number or telephony integration. End-to-end multilingual quality has not been validated. Gemini and voice features are optional adapters; the demo fallback remains usable without a Gemini key. The accompanying repository includes source code, an architecture diagram and a practical demo walkthrough.
