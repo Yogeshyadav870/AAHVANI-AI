@@ -146,7 +146,49 @@ body {
     color: var(--aahvani-ink) !important;
 }
 
+
+/* Decorative ambient layer: visual only, never intercepts UI interaction. */
+#ambient-background {
+    position: fixed;
+    inset: 0;
+    z-index: 0;
+    overflow: hidden;
+    pointer-events: none;
+    background:
+        radial-gradient(ellipse at 18% 45%, rgba(45, 202, 183, .075), transparent 36%),
+        radial-gradient(ellipse at 86% 60%, rgba(76, 139, 237, .085), transparent 38%);
+}
+#ambient-background:before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    opacity: .26;
+    background-image:
+        radial-gradient(circle, rgba(126, 231, 218, .72) 1px, transparent 1.5px),
+        radial-gradient(circle, rgba(113, 169, 246, .60) .8px, transparent 1.4px),
+        radial-gradient(circle, rgba(176, 220, 244, .42) .7px, transparent 1.3px);
+    background-size: 86px 86px, 137px 137px, 193px 193px;
+    background-position: 12px 16px, 47px 63px, 91px 24px;
+    mask-image: linear-gradient(to bottom, black 0%, rgba(0,0,0,.65) 50%, transparent 100%);
+}
+#ambient-background:after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    opacity: .23;
+    background-image:
+        linear-gradient(90deg, transparent 0 47%, rgba(74, 204, 193, .24) 47.2% 47.6%, transparent 47.8%),
+        linear-gradient(0deg, transparent 0 47%, rgba(74, 204, 193, .20) 47.2% 47.6%, transparent 47.8%),
+        linear-gradient(90deg, transparent 0 72%, rgba(101, 159, 239, .18) 72.2% 72.5%, transparent 72.7%),
+        linear-gradient(0deg, transparent 0 26%, rgba(101, 159, 239, .18) 26.2% 26.5%, transparent 26.7%);
+    background-size: 210px 210px, 210px 210px, 280px 280px, 280px 280px;
+    background-position: -95px -78px, -95px -78px, calc(100% + 90px) calc(100% + 90px), calc(100% + 90px) calc(100% + 90px);
+    mask-image: radial-gradient(ellipse at top left, black 0%, transparent 56%);
+}
+
 .gradio-container {
+    position: relative !important;
+    z-index: 1 !important;
     max-width: 1450px !important;
     margin: 0 auto !important;
     padding: 24px 28px 48px !important;
@@ -397,6 +439,7 @@ footer { opacity: .55 !important; }
 
 with gr.Blocks(title=APP_NAME) as demo:
     session_state = gr.State(initial_state())
+    gr.HTML("<div id='ambient-background' aria-hidden='true'></div>")
 
     gr.HTML("""
     <header id="hero">
