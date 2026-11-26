@@ -73,7 +73,12 @@ def _get_gemini_text_client():
     if _GEMINI_TEXT_CLIENT is None:
         _GEMINI_TEXT_CLIENT = genai.Client(
             api_key=api_key,
-            http_options=genai_types.HttpOptions(timeout=45000),
+            http_options=genai_types.HttpOptions(
+                timeout=45000,
+                # Do not hide the actual API failure behind repeated 30-second retries.
+                # The chat callback will display the returned HTTP status and message.
+                retry_options=genai_types.HttpRetryOptions(attempts=0),
+            ),
         )
     return _GEMINI_TEXT_CLIENT
 
