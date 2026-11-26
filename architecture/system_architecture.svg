@@ -1,6 +1,6 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="1500" height="1120" viewBox="0 0 1500 1120" role="img" aria-labelledby="title desc">
 <title id="title">AAHVANI AI current MVP system architecture</title>
-<desc id="desc">Architecture diagram showing text or voice customer input through Gradio, optional Faster Whisper transcription, the Python sales agent with session memory and local FAQ retrieval, optional Gemini generation, lead qualification and sentiment, SQLite CRM booking, summary and dashboard, and optional Edge TTS speech output.</desc>
+<desc id="desc">Architecture diagram showing typed text and live browser audio through Gradio and FastRTC WebRTC, Gemini Live speech-to-speech, transcript-driven lead extraction, session memory, local product knowledge, qualification and sentiment, SQLite CRM booking, summaries and dashboard. Batch Faster-Whisper and Edge TTS remain fallbacks.</desc>
 <defs>
   <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#f6eee5"/><stop offset="1" stop-color="#e4d1be"/></linearGradient>
   <linearGradient id="gold" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#d3aa60"/><stop offset="1" stop-color="#93651b"/></linearGradient>
@@ -49,9 +49,9 @@
 <g filter="url(#shadow)">
  <rect x="95" y="486" width="310" height="118" rx="18" fill="url(#cream)" stroke="#d9c4a7"/>
 </g>
-<text x="125" y="523" class="boxhead">Optional speech-to-text</text>
-<text x="125" y="550" class="body">Faster-Whisper • local CPU INT8</text>
-<text x="125" y="575" class="small">Audio → transcription text</text>
+<text x="125" y="523" class="boxhead">Live voice transport</text>
+<text x="125" y="550" class="body">FastRTC / WebRTC • browser audio</text>
+<text x="125" y="575" class="small">Gemini Live API • bidirectional audio</text>
 <path d="M405 545 H520" class="dash"/>
 
 <!-- agent -->
@@ -62,7 +62,7 @@
 <circle cx="558" cy="536" r="19" fill="url(#gold)"/><text x="558" y="540" text-anchor="middle" class="num">3</text>
 <text x="594" y="531" class="boxhead">Python sales agent</text>
 <text x="594" y="557" class="body">Context handling • Fact extraction • Response logic</text>
-<text x="594" y="583" class="small">Gemini generation optional; local fallback active in demo</text>
+<text x="594" y="583" class="small">Gemini Live transcripts feed lead extraction; text chat has local fallback</text>
 
 <!-- memory and KB side cards -->
 <path d="M520 554 H420 V690" class="line"/>
@@ -107,9 +107,9 @@
 </g>
 <text x="410" y="995" text-anchor="middle" class="boxhead">Call summary + dashboard</text>
 <text x="410" y="1022" text-anchor="middle" class="body">Structured call insights • live SQLite counters</text>
-<text x="1090" y="995" text-anchor="middle" class="boxhead">Optional spoken response</text>
-<text x="1090" y="1022" text-anchor="middle" class="body">Edge TTS • online audio generation</text>
+<text x="1090" y="995" text-anchor="middle" class="boxhead">Gemini Live speech response</text>
+<text x="1090" y="1022" text-anchor="middle" class="body">Native audio stream • Edge TTS is the batch fallback</text>
 
 <!-- footer -->
-<text x="76" y="1084" class="small">MVP boundary: no live telephony, external CRM, real calendar, or production-scale load test.</text>
+<text x="76" y="1084" class="small">MVP boundary: browser live voice is implemented as an optional mode; no PSTN phone number, external CRM, real calendar, or production-scale load test.</text>
 </svg>
