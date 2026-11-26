@@ -1,34 +1,31 @@
 # AAHVANI AI — One-Page Project Report
 
 **Project:** Autonomous AI Sales Voice Agent  
-**Author:** Yogesh Yadav
+**Candidate:** Yogesh Yadav  
+**Challenge:** FORTIVEX AI — Round 3, Advanced AI Project Challenge & Technical Discussion
 
-## Problem and solution
-Sales teams spend time answering repeated product questions, collecting prospect details, qualifying leads and coordinating introductory demos. AAHVANI AI demonstrates an assistant that conducts a contextual conversation, retrieves approved product information, captures buying signals, offers a demo slot, saves the lead in a CRM and prepares a call summary.
+## Business problem and solution
 
-## Core workflow
-Customer message or optional microphone audio → optional speech transcription → conversational sales agent → session context and FAQ retrieval → lead qualification and sentiment signal → local appointment booking → SQLite CRM record → call summary. The interface also supports optional spoken responses.
+Small and medium businesses receive inquiries through websites, social media and other channels. Sales teams spend time answering repeated questions, collecting prospect details, qualifying leads and arranging introductory demos. AAHVANI AI is an individual-built MVP that demonstrates an automated first-line sales workflow: it converses with a prospect, retrieves approved product information, captures buying signals, scores the lead, records a sample demo booking and produces a call summary.
 
-## Objectives and implementation
-- **Conversation:** Gradio UI with session-level conversation history.
-- **Knowledge retrieval:** local Markdown FAQ ranked with a lightweight term-frequency/inverse-document-frequency-style lexical scoring baseline.
-- **Response generation:** optional Gemini API; deterministic local fallback keeps the demonstration usable without a key.
-- **Lead qualification:** transparent BANT-inspired heuristic using Budget, Authority, Need and Timeline signals.
-- **Sentiment:** simple keyword baseline for positive, neutral or negative language.
-- **Booking and CRM:** Python functions and SQLite persist leads and sample demo appointments.
-- **Voice:** one-turn voice interaction: record audio, transcribe with Faster-Whisper, pass the transcript through the same sales-agent workflow, and generate a spoken response with Edge TTS. The Whisper model is cached after its first load.
-- **Dashboard:** live SQLite-backed counters for total leads, qualified leads and demo bookings.
+## End-to-end workflow
 
-## Technology stack
-Python, Gradio, Gemini API (optional), custom lexical retrieval, SQLite, Faster-Whisper (optional), Edge TTS (optional), and pytest.
+Customer text or optional microphone audio → Gradio interface → session-aware Python sales agent → local FAQ retrieval → customer fact extraction → BANT-inspired lead score and keyword sentiment → user-confirmed sample appointment → SQLite CRM → call summary and dashboard metrics. Optional voice input uses Faster-Whisper for local speech-to-text; optional Edge TTS creates spoken responses online.
 
-## Evaluation
-The repository includes automated tests for lead scoring, fact extraction, conversation memory, FAQ retrieval and CRM booking/persistence. The prototype uses fictional product information and sample appointment slots. It is not connected to a live telephony system, external CRM or real calendar.
+## Technical implementation
 
-## Scalability, security and commercial feasibility
-For 100,000 registered users, a production design should separate stateless API services from streaming voice workers; use PostgreSQL for durable transactional data, Redis for session state, a managed vector database for semantic retrieval, queues for asynchronous work, and horizontally scaled containers behind an API gateway. Capacity planning must use peak concurrent calls and audio throughput rather than registered users alone. The production service should implement tenant isolation, TLS, encryption at rest, role-based access, secret management, explicit recording consent, audit logs, and retention/deletion controls.
+The application is built with Python and Gradio. Conversation messages and lead context are held in Gradio session state. The local Markdown product FAQ is split into sections and ranked by a custom TF-IDF-style lexical scoring baseline; no embedding model or vector database is used. Gemini response generation is optional. The default local demo uses a deterministic fallback because no Gemini API key is configured. Lead details are extracted using regular expressions and keyword rules. The transparent BANT-inspired score allocates Need 30, Budget 25, Authority up to 25 and Timeline up to 20 points. Sentiment is a keyword-based baseline. SQLite stores leads and sample appointments in separate tables. Automated `unittest` checks cover scoring, extraction, memory, retrieval and CRM workflow.
 
-A SaaS model could combine subscription tiers with usage-based voice minutes. Key business metrics include qualified-lead rate, appointment conversion, response latency, cost per qualified lead and human handoff rate.
+## Commercial feasibility
 
-## Limitations and next steps
-This is an evaluation MVP; it has not been load-tested for 100,000 users. The qualification and sentiment methods are heuristic baselines. Next steps include live telephony, real calendar and CRM integrations, multilingual evaluation, authentication, monitoring, privacy controls and load testing.
+The initial target customers are agencies and other small or medium businesses with recurring inbound inquiries. A potential model is a monthly SaaS subscription with usage-based charges for voice minutes or conversation volume. Commercial validation should measure qualified-lead rate, demo conversion, response latency, cost per qualified lead, customer satisfaction and human handoff rate. Variable costs include speech recognition, speech synthesis, optional LLM tokens, telephony, compute, storage and bandwidth. Exact pricing should be set only after pilot usage and unit-cost measurement.
+
+## Scale, infrastructure, deployment and security
+
+The current MVP runs locally with Gradio, in-process session state and SQLite; it has not been load-tested for 100,000 users. The proposed production design uses stateless containerised API services behind an API gateway, separate scalable voice workers, PostgreSQL for transactions, Redis for sessions, a managed vector database for semantic retrieval, queues for background jobs, monitoring and automated backups. Capacity planning must use peak concurrent calls and audio/request throughput, not registered users alone.
+
+Production security would include TLS, encryption at rest, tenant isolation, authentication, role-based access, secret management, explicit recording consent, audit logs and retention/deletion controls. A staged deployment would begin with a limited customer pilot, then add integrations, observability, concurrency testing and autoscaling before wider release.
+
+## Scope and limitations
+
+This prototype demonstrates the core business workflow. It does not include live telephony, a real calendar, an external CRM, full-duplex voice, validated end-to-end multilingual support, production authentication or a 100,000-user deployment. Gemini and voice features are optional adapters; the demo fallback remains usable without a Gemini key. The accompanying repository includes source code, an architecture diagram and a practical demo walkthrough.
