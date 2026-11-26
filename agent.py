@@ -64,12 +64,25 @@ class AahvaniAgent:
         words = re.findall(r"[A-Za-z]+", text[prefix.end():])
         if not words:
             return ""
+
+        role_words = {
+            "ceo", "chief", "executive", "officer", "founder", "cofounder",
+            "owner", "proprietor", "manager", "director", "president",
+            "approver", "employee", "employee", "developer", "engineer",
+        }
+        # "I'm the CEO" and "I am founder" describe a role, not a person's name.
+        if words[0].lower() in {"the", "a", "an"} | role_words:
+            return ""
+
         name_parts = [words[0].capitalize()]
-        connectors = {"and", "email", "phone", "my", "i", "we", "our", "from", "at", "the", "working"}
+        connectors = {
+            "and", "email", "phone", "my", "i", "we", "our", "from",
+            "at", "the", "working",
+        } | role_words
         if len(words) > 1 and words[1].lower() not in connectors:
             raw_remainder = text[prefix.end():]
             second = re.match(r"[A-Za-z]+\s+([A-Z][a-z]+|[A-Z]{2,})\b", raw_remainder)
-            if second:
+            if second and second.group(1).lower() not in role_words:
                 name_parts.append(second.group(1).capitalize())
         return " ".join(name_parts)
 
