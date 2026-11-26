@@ -383,14 +383,13 @@ class ShoppingAgentTests(unittest.TestCase):
 
     def test_brand_no_match_falls_back_to_other_brands(self):
         _, session = self.agent.respond(
-            "I need a phone under ₹10,000 for battery", self.session
+            "I need a phone under ₹20,000 for battery", self.session
         )
         reply, session = self.agent.respond("Apple", session)
-        self.assertIn("brand", reply.lower())
-        reply, session = self.agent.respond("Samsung", session)
+        self.assertIn("alternatives", reply.lower())
+        self.assertTrue(session["shopping"]["recommendations"])
         self.assertTrue(
-            session["shopping"]["recommendations"]
-            or "couldn't find" in reply.lower()
+            all(p["price_inr"] <= 20000 for p in session["shopping"]["recommendations"])
         )
 
 
