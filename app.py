@@ -130,13 +130,13 @@ CUSTOM_CSS = """
 .panel {border: 1px solid var(--border-color-primary); border-radius: 14px; padding: 14px;}
 """
 
-with gr.Blocks(title=APP_NAME, theme=gr.themes.Soft(), css=CUSTOM_CSS) as demo:
+with gr.Blocks(title=APP_NAME) as demo:
     session_state = gr.State(initial_state())
     gr.HTML("<div id='hero'><h1>AAHVANI AI</h1><p>Autonomous sales conversations · Lead qualification · Demo scheduling</p></div>")
     with gr.Row():
         with gr.Column(scale=7):
             gr.Markdown("### Live customer conversation")
-            chatbot = gr.Chatbot(height=430, label="Conversation", type="messages")
+            chatbot = gr.Chatbot(height=430, label="Conversation")
             with gr.Row():
                 message = gr.Textbox(placeholder="Try: Hi, I run a small real-estate agency and need help tracking leads...", show_label=False, scale=8, lines=2)
                 send = gr.Button("Send", variant="primary", scale=1)
@@ -195,4 +195,4 @@ with gr.Blocks(title=APP_NAME, theme=gr.themes.Soft(), css=CUSTOM_CSS) as demo:
 
 
 if __name__ == "__main__":
-    demo.launch(server_name=os.getenv("HOST", "127.0.0.1"), server_port=int(os.getenv("PORT", "7860")), share=False)
+    demo.launch(server_name=os.getenv("HOST", "127.0.0.1"), server_port=int(os.getenv("PORT", "7860")), share=False, theme=gr.themes.Soft(), css=CUSTOM_CSS)
