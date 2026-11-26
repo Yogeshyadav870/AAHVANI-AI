@@ -149,6 +149,88 @@ class AgentCoreTests(unittest.TestCase):
 
 
 class CRMTests(unittest.TestCase):
+    def test_save_service_appointment_request_to_crm(self):
+        with tempfile.TemporaryDirectory() as directory:
+            crm = CRM(Path(directory) / "appointments.db")
+            lead_id = crm.save_lead({
+                "name": "Rahul",
+                "phone": "9876543210",
+                "need": "Healthcare: Dental consultation",
+            })
+            record = crm.create_service_appointment_request(
+                lead_id=lead_id,
+                service_category="Healthcare",
+                service_name="Dental consultation",
+                provider_name="City Dental Clinic",
+                city="Jalandhar",
+                preferred_date="2026-12-02",
+                preferred_time="11:30 AM",
+                customer_name="Rahul",
+                customer_phone="9876543210",
+                notes="Routine dental check-up",
+            )
+            self.assertEqual(record["status"], "Pending provider confirmation")
+            self.assertEqual(record["city"], "Jalandhar")
+            self.assertEqual(record["customer_name"], "Rahul")
+            self.assertEqual(crm.service_appointment_count(), 1)
+            self.assertEqual(len(crm.recent_service_appointments()), 1)
+
+    def test_duplicate_service_appointment_request_is_not_inserted_twice(self):
+        with tempfile.TemporaryDirectory() as directory:
+            crm = CRM(Path(directory) / "appointments.db")
+            lead_id = crm.save_lead({"name": "Rahul", "phone": "9876543210"})
+            args = {
+                "lead_id": lead_id,
+                "service_category": "Healthcare",
+                "service_name": "Dental consultation",
+                "provider_name": "City Dental Clinic",
+                "city": "Jalandhar",
+                "preferred_date": "2026-12-02",
+                "preferred_time": "11:30 AM",
+                "customer_name": "Rahul",
+                "customer_phone": "9876543210",
+            }
+            first = crm.create_service_appointment_request(**args)
+            second = crm.create_service_appointment_request(**args)
+            self.assertEqual(first["id"], second["id"])
+            self.assertTrue(second["duplicate_prevented"])
+            self.assertEqual(crm.service_appointment_count(), 1)
+
+    def test_service_appointment_requires_a_customer_contact(self):
+        with tempfile.TemporaryDirectory() as directory:
+            crm = CRM(Path(directory) / "appointments.db")
+            lead_id = crm.save_lead({"name": "Rahul"})
+            with self.assertRaisesRegex(ValueError, "phone number or email"):
+                crm.create_service_appointment_request(
+                    lead_id=lead_id,
+                    service_category="Healthcare",
+                    service_name="Dental consultation",
+                    city="Jalandhar",
+                    preferred_date="2026-12-02",
+                    preferred_time="11:30 AM",
+                    customer_name="Rahul",
+                )
+
+    def test_appointment_status_can_be_updated_after_provider_confirmation(self):
+        with tempfile.TemporaryDirectory() as directory:
+            crm = CRM(Path(directory) / "appointments.db")
+            lead_id = crm.save_lead({"name": "Rahul", "phone": "9876543210"})
+            record = crm.create_service_appointment_request(
+                lead_id=lead_id,
+                service_category="Vehicle service",
+                service_name="Car inspection",
+                city="Jalandhar",
+                preferred_date="2026-12-03",
+                preferred_time="10:00 AM",
+                customer_name="Rahul",
+                customer_phone="9876543210",
+            )
+            crm.update_service_appointment_status(
+                record["id"], "Confirmed", "PROVIDER-REF-123"
+            )
+            updated = crm.recent_service_appointments()[0]
+            self.assertEqual(updated[7], "Confirmed")
+
     def test_save_and_book(self):
         with tempfile.TemporaryDirectory() as directory:
             crm = CRM(Path(directory) / "test.db")
