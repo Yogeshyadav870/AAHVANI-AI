@@ -579,7 +579,7 @@ with gr.Blocks(title=APP_NAME) as demo:
                     <div><h2>Schedule a product demo</h2><p>Choose a sample slot to complete the workflow.</p></div>
                 </div>
                 """)
-                slot = gr.Dropdown(choices=SAMPLE_SLOTS, value=SAMPLE_SLOTS[0], label="Available sample slots")
+                slot = gr.Radio(choices=SAMPLE_SLOTS, value=SAMPLE_SLOTS[0], label="Choose a demo slot", elem_classes=["slot-picker"])
                 book_btn = gr.Button("Confirm demo booking", variant="primary")
                 booking_status = gr.Markdown(elem_classes=["status-note"])
 
