@@ -319,8 +319,9 @@ class ShoppingAgent:
 
         if not shopping.get("category"):
             reply = (
-                "Of course! What are you looking to buy — a smartphone, laptop, tablet, "
-                "headphones, smartwatch, monitor, camera, speaker or a home appliance?"
+                "Of course! What are you looking to buy — a smartphone, laptop, tablet, headphones, "
+                "smartwatch, monitor, camera, TV, printer, shoes, backpack, furniture, speaker "
+                "or a home appliance?"
             )
             session["messages"].append({"role": "assistant", "content": reply})
             return reply, session
