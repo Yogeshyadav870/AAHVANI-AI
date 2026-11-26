@@ -75,6 +75,7 @@ class CRMTests(unittest.TestCase):
             appointment_id = crm.book_appointment(lead_id, "Demo slot 1 — 11:00 AM")
             self.assertTrue(appointment_id)
             self.assertEqual(crm.appointment_count(), 1)
+            self.assertEqual(crm.dashboard_stats(), (1, 1, 1))
             self.assertEqual(len(crm.recent_leads()), 1)
 
 
