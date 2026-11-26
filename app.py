@@ -600,9 +600,9 @@ with gr.Blocks(
     gr.HTML("""
     <header id="hero">
         <div class="hero-copy">
-            <div class="hero-kicker"><span class="hero-dot"></span> AI SALES WORKSPACE <span class="hero-tag">LOCAL MVP</span></div>
+            <div class="hero-kicker"><span class="hero-dot"></span> AI APPOINTMENT & CRM WORKSPACE <span class="hero-tag">LOCAL MVP</span></div>
             <h1>AAHVANI <span>AI</span></h1>
-            <p>Intelligent sales conversations, qualified leads, and effortless demo scheduling.</p>
+            <p>Natural voice conversations, local service appointment requests, and customer CRM.</p>
         </div>
         <div class="hero-brandmark" aria-label="AAHVANI AI headset and soundwave logo">
             <svg viewBox="0 0 220 160" role="img" aria-hidden="true">
@@ -652,14 +652,14 @@ with gr.Blocks(
             <div class="section-symbol">🎙</div>
             <div>
                 <h2>Speak Up — Live Voice Mode</h2>
-                <p>Talk naturally with AAHVANI. It listens continuously, responds with voice, and can be interrupted.</p>
+                <p>Talk naturally with AAHVANI to ask about services, request appointments, and capture customer details. It listens continuously and can be interrupted.</p>
             </div>
         </div>
         <div class="live-mode-note">
             Click the <strong>microphone icon</strong> to start a live conversation. AAHVANI will greet you automatically.
             Speak naturally, or type in the input and press Enter. While connected, the microphone button mutes/unmutes you,
             the speaker button mutes/unmutes AAHVANI, and the square button ends the conversation.
-            Customer transcripts are automatically saved to the local CRM. Use headphones for the clearest conversation.
+            Customer transcripts and confirmed appointment requests are saved to the local CRM. Appointment requests remain pending until the provider confirms. Use headphones for the clearest conversation.
         </div>
         """)
         if LIVE_VOICE_AVAILABLE:
@@ -772,7 +772,7 @@ with gr.Blocks(
             gr.HTML("""
             <div class="section-head">
                 <div class="section-symbol">▦</div>
-                <div><h2>Local CRM records</h2><p>Leads and demo bookings saved in the local database.</p></div>
+                <div><h2>Local CRM records</h2><p>Customer leads, demo bookings and service appointment requests saved in the local database.</p></div>
             </div>
             """)
             crm_table = gr.Dataframe(
