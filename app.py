@@ -565,17 +565,6 @@ with gr.Blocks(title=APP_NAME) as demo:
                 concurrency_limit=1,
                 show_progress="hidden",
             )
-            live_audio.on_additional_outputs(
-                lambda *values: values,
-                outputs=[
-                    live_status, chatbot, session_state, last_response_state,
-                    lead_name, lead_company, lead_email, lead_phone,
-                    lead_score, lead_status, sentiment, crm_table,
-                    lead_count, qualified_count, appointment_count,
-                ],
-                queue=False,
-                show_progress="hidden",
-            )
         else:
             gr.Markdown(
                 "Live Voice Mode is not installed yet. In the project terminal, run "
@@ -667,6 +656,18 @@ with gr.Blocks(title=APP_NAME) as demo:
             refresh_btn = gr.Button("Refresh CRM & metrics", variant="secondary")
 
     outputs = [chatbot, session_state, message, lead_name, lead_company, lead_email, lead_phone, lead_score, lead_status, sentiment, crm_table, last_response_state, lead_count, qualified_count, appointment_count]
+    if LIVE_VOICE_AVAILABLE:
+        live_audio.on_additional_outputs(
+            lambda *values: values,
+            outputs=[
+                live_status, chatbot, session_state, last_response_state,
+                lead_name, lead_company, lead_email, lead_phone,
+                lead_score, lead_status, sentiment, crm_table,
+                lead_count, qualified_count, appointment_count,
+            ],
+            queue=False,
+            show_progress="hidden",
+        )
     send.click(chat, [message, chatbot, session_state], outputs)
     message.submit(chat, [message, chatbot, session_state], outputs)
     audio_input.change(transcribe_audio, [audio_input], [transcribed])
