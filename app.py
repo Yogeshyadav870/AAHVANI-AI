@@ -159,11 +159,9 @@ status and be transparent that it is a simulated order.
             primary_use: Main use such as camera, gaming, battery, coding, study, work or everyday.
         """
         detected_category = shopping_catalogue.detect_category(category) or str(category or "").strip().lower()
-        if detected_category not in {item[1] for item in ShoppingCatalogue.ALIASES.items()}:
-            # The set below is a normalized set of valid catalogue categories.
-            valid_categories = set(ShoppingCatalogue.ALIASES.keys())
-            if detected_category not in valid_categories:
-                return {"ok": False, "needs_clarification": True, "message": "Ask the customer which product category they want."}
+        valid_categories = set(ShoppingCatalogue.ALIASES.keys())
+        if detected_category not in valid_categories:
+            return {"ok": False, "needs_clarification": True, "message": "Ask the customer which product category they want."}
         selected_category = detected_category
         budget = int(budget_max or shopping_state.get("budget_max") or 0)
         if budget <= 0:
