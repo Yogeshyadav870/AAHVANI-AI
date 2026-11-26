@@ -71,7 +71,10 @@ def _get_gemini_text_client():
     if not GEMINI_TEXT_AVAILABLE:
         raise RuntimeError(f"Gemini text dependencies are unavailable: {GEMINI_TEXT_IMPORT_ERROR}")
     if _GEMINI_TEXT_CLIENT is None:
-        _GEMINI_TEXT_CLIENT = genai.Client(api_key=api_key)
+        _GEMINI_TEXT_CLIENT = genai.Client(
+            api_key=api_key,
+            http_options=genai_types.HttpOptions(timeout=45000),
+        )
     return _GEMINI_TEXT_CLIENT
 
 
@@ -90,7 +93,11 @@ def _gemini_text_model_name() -> str:
 
 
 def _interaction_text_output(interaction) -> str:
-    """Extract text blocks from the Interactions API response using SDK 2.x fields."""
+    """Extract the final text from an Interactions API response."""
+    output_text = getattr(interaction, "output_text", None)
+    if isinstance(output_text, str) and output_text.strip():
+        return output_text.strip()
+
     parts = []
     for step in getattr(interaction, "steps", None) or []:
         if getattr(step, "type", None) != "model_output":
@@ -399,6 +406,7 @@ and clearly state that this is a simulated order.
             "system_instruction": system_instruction,
             "tools": tools,
             "generation_config": {"temperature": 0.35},
+            "store": True,
         }
         previous_id = session.get("gemini_previous_interaction_id")
         if previous_id:
@@ -433,10 +441,7 @@ and clearly state that this is a simulated order.
                     "type": "function_result",
                     "name": step.name,
                     "call_id": step.id,
-                    "result": [{
-                        "type": "text",
-                        "text": json.dumps(result, ensure_ascii=False),
-                    }],
+                    "result": result,
                 }
                 signature = getattr(step, "signature", None)
                 if signature:
@@ -447,9 +452,7 @@ and clearly state that this is a simulated order.
                 model=model,
                 previous_interaction_id=interaction.id,
                 input=function_results,
-                system_instruction=system_instruction,
-                tools=tools,
-                generation_config={"temperature": 0.35},
+                store=True,
             )
 
         session["gemini_previous_interaction_id"] = getattr(interaction, "id", None)
