@@ -14,7 +14,7 @@ A customer can say or type: "I need a gaming laptop under ₹60,000." AAHVANI as
 
 Customer text or speech → unified Gradio chat → Gemini Live API (voice mode) or deterministic Python text flow → category and preference gathering → Python catalogue filtering/ranking → up to three product recommendations → customer selects an option → AAHVANI reads back the product and demo price → explicit customer confirmation → Python order tool → SQLite simulated order → success receipt and AAH order reference → order history and status tracking.
 
-The same reusable flow supports smartphones, laptops, headphones, tablets, smartwatches, monitors, cameras, home appliances, speakers and gaming consoles.
+The same reusable flow supports smartphones, laptops, headphones, tablets, smartwatches, monitors, cameras, home appliances, speakers, gaming consoles, televisions, printers, footwear, backpacks and furniture.
 
 ## Technical implementation
 
