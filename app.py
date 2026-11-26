@@ -585,7 +585,7 @@ with gr.Blocks(
                 <div><h2>Live customer conversation</h2><p>Talk naturally. AAHVANI captures intent and guides the next step.</p></div>
             </div>
             """)
-            chatbot = gr.Chatbot(height=420, label="Conversation", elem_id="conversation-chat")
+            chatbot = gr.Chatbot(height=420, label="Conversation", type="messages", elem_id="conversation-chat")
             with gr.Row(elem_classes=["composer-row"]):
                 message = gr.Textbox(
                     placeholder="Start with: Hi, I run a small agency and need help tracking leads...",
