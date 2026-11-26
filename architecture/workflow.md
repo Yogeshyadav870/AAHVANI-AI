@@ -24,6 +24,6 @@ flowchart TD
     T --> U["Pending → Processing → Shipped → Delivered"]
 ~~~
 
-**Current implementation:** The same shopping journey works through text fallback and Gemini Live voice/text. The local product catalogue contains illustrative demo listings across ten categories. Python performs filtering/ranking and stores simulated orders. Live Gemini function tools search products, select a product, create a demo order after explicit confirmation and look up an order status.
+**Current implementation:** The same shopping journey works through text fallback and Gemini Live voice/text. The local product catalogue contains illustrative demo listings across fifteen categories, including electronics, home goods, footwear, bags and furniture. Python performs filtering/ranking and stores simulated orders. Live Gemini function tools search products, select a product, create a demo order after explicit confirmation and look up an order status.
 
 **Boundary:** The system does not connect to live retailers, check live inventory, collect payments or create real shipments. Order statuses are simulated in the local dashboard.
