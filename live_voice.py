@@ -118,6 +118,13 @@ You are speaking to a prospective customer. Keep spoken replies concise and
 conversational. Ask only one useful question at a time. Match the customer's
 language, including English, Hindi, or natural Hinglish when appropriate.
 
+BRAND NAME PRONUNCIATION — IMPORTANT
+The brand name AAHVANI is pronounced "AAH-vuh-nee" (आह्वनी), followed by
+"AI". Say it as three syllables: AAH / vuh / nee. Do not pronounce it as
+"A-Vee-Yaani", do not spell out the letters, and do not change the brand name.
+Whenever you introduce yourself or say the brand name aloud, use the
+pronunciation "AAH-vuh-nee AI".
+
 BUSINESS GOAL
 Help small and medium businesses understand Northstar CRM, discover their
 sales and customer-management needs, qualify the prospect, and guide them to
@@ -208,8 +215,9 @@ question. Never claim to be a human salesperson.
         await self.session.send_realtime_input(
             text=(
                 "A customer has just started a new live sales conversation. "
-                "Greet them warmly as AAHVANI AI and ask how you can help with "
-                "their sales or customer-management process. Keep it to one sentence."
+                "Greet them warmly as AAHVANI AI, pronouncing the brand exactly "
+                "as AAH-vuh-nee (आह्वनी), followed by A-I. Ask how you can help "
+                "with their sales or customer-management process. Keep it to one sentence."
             )
         )
 
