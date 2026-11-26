@@ -50,8 +50,8 @@ def initial_state():
 def shopping_chat(message, history, session):
     session = session or initial_state()
     session.setdefault("session_id", str(uuid.uuid4()))
-    order_match = re.search(r"\bAAH-[A-Z0-9]{8}\\b", str(message or ""), re.I)
-    if order_match and re.search(r"\b(order|status|track|delivery|delivered)\\b", str(message or ""), re.I):
+    order_match = re.search(r"\bAAH-[A-Z0-9]{8}\b", str(message or ""), re.I)
+    if order_match and re.search(r"\b(order|status|track|delivery|delivered)\b", str(message or ""), re.I):
         record = crm.get_demo_order(order_match.group(0))
         if record:
             answer = (
@@ -59,11 +59,11 @@ def shopping_chat(message, history, session):
                 f"is currently **{record['status']}**. This is a simulated order; no real shipment exists."
             )
             order_panel = (
-                "## Order status lookup\\n\\n"
-                f"**Order ID:** {record['order_ref']}\\n\\n"
-                f"**Product:** {record['product_title']}\\n\\n"
-                f"**Total:** ₹{int(record['total_price']):,}\\n\\n"
-                f"**Current status:** {record['status']}\\n\\n"
+                "## Order status lookup\n\n"
+                f"**Order ID:** {record['order_ref']}\n\n"
+                f"**Product:** {record['product_title']}\n\n"
+                f"**Total:** ₹{int(record['total_price']):,}\n\n"
+                f"**Current status:** {record['status']}\n\n"
                 "Simulated order only — no real shipment exists."
             )
         else:
