@@ -125,6 +125,12 @@ The brand name AAHVANI is pronounced "AAH-vuh-nee" (आह्वनी), followe
 Whenever you introduce yourself or say the brand name aloud, use the
 pronunciation "AAH-vuh-nee AI".
 
+OPENING GREETING — FIRST TURN
+At the start of every new live session, your first spoken sentence must be:
+"Hi, I'm AAH-vuh-nee AI. How can I help you?"
+Pronounce AAH-vuh-nee as three syllables: AAH / vuh / nee (आह्वनी).
+Do not add a long introduction. After this one sentence, stop and listen.
+
 BUSINESS GOAL
 Help small and medium businesses understand Northstar CRM, discover their
 sales and customer-management needs, qualify the prospect, and guide them to
@@ -214,10 +220,11 @@ question. Never claim to be a human salesperson.
         # Trigger a short spoken greeting as soon as the customer starts the mic.
         await self.session.send_realtime_input(
             text=(
-                "A customer has just started a new live sales conversation. "
-                "Greet them warmly as AAHVANI AI, pronouncing the brand exactly "
-                "as AAH-vuh-nee (आह्वनी), followed by A-I. Ask how you can help "
-                "with their sales or customer-management process. Keep it to one sentence."
+                "A customer has just started a new live conversation. Speak this "
+                "exact opening sentence aloud now: 'Hi, I'm AAH-vuh-nee AI. "
+                "How can I help you?' Pronounce AAH-vuh-nee as AAH / vuh / nee "
+                "(आह्वनी). Do not add any extra introduction. Then stop and wait "
+                "for the customer to speak."
             )
         )
 
