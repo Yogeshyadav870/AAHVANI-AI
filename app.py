@@ -155,16 +155,27 @@ body {
     overflow: hidden;
     pointer-events: none;
     background:
-        radial-gradient(ellipse at 18% 45%, rgba(45, 202, 183, .075), transparent 36%),
-        radial-gradient(ellipse at 86% 60%, rgba(76, 139, 237, .085), transparent 38%);
+        radial-gradient(ellipse at 18% 45%, rgba(45, 202, 183, .15), transparent 36%),
+        radial-gradient(ellipse at 86% 60%, rgba(76, 139, 237, .17), transparent 38%);
 }
+
+.ambient-network {
+    position: absolute;
+    inset: 0;
+    z-index: 1;
+    width: 100%;
+    height: 100%;
+    opacity: .86;
+    filter: drop-shadow(0 0 7px rgba(67, 210, 197, .25));
+}
+
 #ambient-background:before {
     content: "";
     position: absolute;
     inset: 0;
-    opacity: .26;
+    opacity: .40;
     background-image:
-        radial-gradient(circle, rgba(126, 231, 218, .72) 1px, transparent 1.5px),
+        radial-gradient(circle, rgba(126, 231, 218, .86) 1px, transparent 1.5px),
         radial-gradient(circle, rgba(113, 169, 246, .60) .8px, transparent 1.4px),
         radial-gradient(circle, rgba(176, 220, 244, .42) .7px, transparent 1.3px);
     background-size: 86px 86px, 137px 137px, 193px 193px;
@@ -439,7 +450,72 @@ footer { opacity: .55 !important; }
 
 with gr.Blocks(title=APP_NAME) as demo:
     session_state = gr.State(initial_state())
-    gr.HTML("<div id='ambient-background' aria-hidden='true'></div>")
+    gr.HTML("""
+    <div id="ambient-background" aria-hidden="true">
+      <svg class="ambient-network" viewBox="0 0 1600 1000" preserveAspectRatio="xMidYMid slice">
+        <defs>
+          <linearGradient id="networkTeal" x1="0" y1="0" x2="1" y2="1">
+            <stop offset="0" stop-color="#50e1d0" stop-opacity=".82"/>
+            <stop offset="1" stop-color="#50e1d0" stop-opacity=".10"/>
+          </linearGradient>
+          <linearGradient id="networkBlue" x1="0" y1="0" x2="1" y2="1">
+            <stop offset="0" stop-color="#67aaff" stop-opacity=".12"/>
+            <stop offset="1" stop-color="#67aaff" stop-opacity=".82"/>
+          </linearGradient>
+          <radialGradient id="networkGlow">
+            <stop offset="0" stop-color="#3bd8c8" stop-opacity=".26"/>
+            <stop offset="1" stop-color="#3bd8c8" stop-opacity="0"/>
+          </radialGradient>
+        </defs>
+        <circle cx="55" cy="490" r="250" fill="url(#networkGlow)"/>
+        <circle cx="1545" cy="390" r="290" fill="url(#networkGlow)"/>
+        <circle cx="1545" cy="390" r="190" fill="none" stroke="#55d9ce" stroke-opacity=".30" stroke-width="1.2"/>
+        <circle cx="1545" cy="390" r="225" fill="none" stroke="#55d9ce" stroke-opacity=".18" stroke-width="1"/>
+        <circle cx="55" cy="490" r="155" fill="none" stroke="#62aaff" stroke-opacity=".24" stroke-width="1.2"/>
+        <circle cx="55" cy="490" r="195" fill="none" stroke="#62aaff" stroke-opacity=".16" stroke-width="1"/>
+        <g fill="none" stroke="url(#networkTeal)" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M0 235 L70 235 L112 277 L172 277 L218 323"/>
+          <path d="M0 330 L58 330 L104 376 L165 376 L205 416 L248 416"/>
+          <path d="M0 595 L68 595 L118 545 L173 545 L228 490"/>
+          <path d="M0 690 L58 690 L106 642 L160 642 L210 592 L260 592"/>
+          <path d="M75 0 L75 78 L122 125 L122 185 L170 233"/>
+          <path d="M180 1000 L180 920 L226 874 L226 805 L277 754"/>
+        </g>
+        <g fill="none" stroke="url(#networkBlue)" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M1600 175 L1534 175 L1485 224 L1425 224 L1378 270"/>
+          <path d="M1600 278 L1542 278 L1495 325 L1438 325 L1393 370 L1352 370"/>
+          <path d="M1600 610 L1538 610 L1487 559 L1430 559 L1382 510"/>
+          <path d="M1600 730 L1542 730 L1490 678 L1434 678 L1380 624 L1335 624"/>
+          <path d="M1510 0 L1510 74 L1465 119 L1465 180 L1415 230"/>
+          <path d="M1410 1000 L1410 920 L1364 874 L1364 814 L1312 762"/>
+        </g>
+        <g fill="#83f0df" stroke="#071321" stroke-width="4">
+          <circle cx="70" cy="235" r="5"/><circle cx="112" cy="277" r="4"/>
+          <circle cx="172" cy="277" r="5"/><circle cx="104" cy="376" r="4"/>
+          <circle cx="165" cy="376" r="5"/><circle cx="118" cy="545" r="5"/>
+          <circle cx="173" cy="545" r="4"/><circle cx="106" cy="642" r="4"/>
+          <circle cx="160" cy="642" r="5"/><circle cx="122" cy="125" r="4"/>
+          <circle cx="226" cy="874" r="4"/>
+        </g>
+        <g fill="#86baff" stroke="#071321" stroke-width="4">
+          <circle cx="1534" cy="175" r="5"/><circle cx="1485" cy="224" r="4"/>
+          <circle cx="1425" cy="224" r="5"/><circle cx="1495" cy="325" r="4"/>
+          <circle cx="1438" cy="325" r="5"/><circle cx="1487" cy="559" r="5"/>
+          <circle cx="1430" cy="559" r="4"/><circle cx="1490" cy="678" r="4"/>
+          <circle cx="1434" cy="678" r="5"/><circle cx="1465" cy="119" r="4"/>
+          <circle cx="1364" cy="874" r="4"/>
+        </g>
+        <g fill="none" stroke="#7de9dc" stroke-opacity=".34" stroke-width="1.2">
+          <circle cx="172" cy="277" r="13"/><circle cx="165" cy="376" r="13"/>
+          <circle cx="118" cy="545" r="15"/><circle cx="160" cy="642" r="13"/>
+        </g>
+        <g fill="none" stroke="#8abaff" stroke-opacity=".34" stroke-width="1.2">
+          <circle cx="1425" cy="224" r="13"/><circle cx="1438" cy="325" r="13"/>
+          <circle cx="1487" cy="559" r="15"/><circle cx="1434" cy="678" r="13"/>
+        </g>
+      </svg>
+    </div>
+    """)
 
     gr.HTML("""
     <header id="hero">
