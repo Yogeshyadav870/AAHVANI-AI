@@ -1,0 +1,5 @@
+# Optional: install this to enable real-time bidirectional voice mode.
+# Includes the official Google Gen AI SDK and FastRTC/WebRTC transport.
+-r requirements.txt
+-r requirements-gemini.txt
+fastrtc
