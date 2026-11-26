@@ -90,6 +90,34 @@ class AgentCoreTests(unittest.TestCase):
         self.assertEqual(session["pending_field"], "need")
         self.assertIn("manage or improve", reply.lower())
 
+    def test_numeric_budget_and_flexible_status_are_both_captured(self):
+        budget = self.agent._extract_budget("55000 and it's flexible")
+        self.assertEqual(budget, "55,000 (flexible)")
+
+    def test_ceo_and_approve_it_are_recognised_as_decision_makers(self):
+        self.assertEqual(
+            self.agent._extract_authority("I m the CEO of my company"),
+            "Decision maker",
+        )
+        self.assertEqual(
+            self.agent._extract_authority("I will approve it"),
+            "Decision maker",
+        )
+
+    def test_yes_i_will_advances_past_authority_question(self):
+        _, session = self.agent.respond("Hello", self.session)
+        _, session = self.agent.respond(
+            "I want CRM services for my company", session
+        )
+        _, session = self.agent.respond("55000 and it's flexible", session)
+        self.assertEqual(session["pending_field"], "authority")
+
+        reply, session = self.agent.respond("Yes i will", session)
+        self.assertEqual(session["lead"]["authority"], "Decision maker")
+        self.assertEqual(session["pending_field"], "timeline")
+        self.assertIn("when are you hoping", reply.lower())
+        self.assertNotIn("final purchase decision", reply.lower())
+
     def test_end_to_end_lead_to_booking_workflow(self):
         with tempfile.TemporaryDirectory() as directory:
             crm = CRM(Path(directory) / "workflow.db")
