@@ -27,6 +27,7 @@ DEFAULT_VOICE = "Kore"
 _AVAILABLE_CATEGORIES = (
     "smartphone", "laptop", "headphones", "tablet", "smartwatch",
     "monitor", "camera", "home appliance", "speaker", "gaming console",
+    "television", "printer", "footwear", "backpack", "furniture",
 )
 
 
@@ -133,7 +134,8 @@ question at a time.
 YOUR JOB
 Help users discover and compare general consumer products from the AAHVANI demo catalogue.
 Supported categories: smartphones, laptops, headphones, tablets, smartwatches, monitors,
-cameras, home appliances, speakers and gaming consoles. Detect the product category from
+cameras, home appliances, speakers, gaming consoles, televisions, printers, footwear,
+backpacks and furniture. Detect the product category from
 natural language, then gather missing requirements such as budget, primary use and preferred brand.
 Do not force irrelevant questions: use the category's needs to ask a helpful follow-up.
 
