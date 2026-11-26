@@ -77,10 +77,12 @@ class ShoppingCatalogue:
             key=lambda item: len(item[0]),
             reverse=True,
         )
+        matches = []
         for alias, category in aliases:
-            if re.search(r"(?<!\w)" + re.escape(alias) + r"(?!\w)", lower):
-                return category
-        return ""
+            match = re.search(r"(?<!\w)" + re.escape(alias) + r"(?!\w)", lower)
+            if match:
+                matches.append((match.start(), -len(alias), category))
+        return min(matches)[2] if matches else ""
 
     @staticmethod
     def parse_budget(text: str) -> int | None:
