@@ -149,8 +149,8 @@ After success, say the simulated order is placed, provide the order reference an
 No payment is taken, no retailer is contacted, and no actual package is shipped.
 
 FOLLOW-UP
-If the customer asks about an existing demo order, use the order reference and the dashboard's
-order status information when available. Do not pretend a real retailer or delivery partner exists.
+If the customer asks about an existing demo order, call get_demo_order_status with the order reference.
+Explain the returned status. Do not pretend a real retailer or delivery partner exists.
 Allow the customer to change category, budget, brand or use-case at any point and restart matching.
 
 BRAND AND TRUST
@@ -344,6 +344,23 @@ addresses or other payment credentials. Do not provide payment or delivery guara
                     except Exception as exc:
                         logger.exception("Could not create demo order")
                         result = {"ok": False, "error": f"Order creation failed: {type(exc).__name__}: {exc}"}
+            elif name == "get_demo_order_status":
+                order_reference = str(args.get("order_reference") or "").strip()
+                order = self.crm.get_demo_order(order_reference)
+                if order:
+                    result = {
+                        "ok": True,
+                        "order_reference": order["order_ref"],
+                        "product_title": order["product_title"],
+                        "total_price": order["total_price"],
+                        "status": order["status"],
+                        "simulation_only": True,
+                    }
+                else:
+                    result = {
+                        "ok": False,
+                        "error": "I could not find that order reference in the AAHVANI demo order history.",
+                    }
             else:
                 result = {"ok": False, "error": f"Unsupported function: {name}"}
 
@@ -351,6 +368,20 @@ addresses or other payment credentials. Do not provide payment or delivery guara
 
         if responses:
             await self.session.send_tool_response(function_responses=responses)
+
+    @staticmethod
+    def _get_order_status_declaration():
+        return types.FunctionDeclaration(
+            name="get_demo_order_status",
+            description="Look up the status of an existing simulated AAHVANI order by its order reference.",
+            parameters_json_schema={
+                "type": "object",
+                "properties": {
+                    "order_reference": {"type": "string", "description": "Order reference such as AAH-12AB34CD."},
+                },
+                "required": ["order_reference"],
+            },
+        )
 
     async def start_up(self) -> None:
         self._loop = asyncio.get_running_loop()
@@ -382,6 +413,7 @@ addresses or other payment credentials. Do not provide payment or delivery guara
                     self._search_products_declaration(),
                     self._select_product_declaration(),
                     self._place_order_declaration(),
+                    self._get_order_status_declaration(),
                 ])],
             )
             models_to_try = [requested_model]
