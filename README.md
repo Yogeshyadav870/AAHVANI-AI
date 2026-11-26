@@ -5,7 +5,7 @@
   <p>Intelligence that speaks. Conversations that convert.</p>
 </div>
 
-AAHVANI AI is an evaluation-ready MVP that demonstrates how an AI sales assistant can handle an initial customer conversation, retrieve approved product information, capture buying signals, qualify a prospect, save a lead, book a sample demo slot and prepare a call summary.
+AAHVANI AI is an evaluation-ready MVP for an AI sales sales assistant. It supports contextual text conversations, an optional real-time browser voice mode, product knowledge, lead capture and qualification, sample demo booking, CRM persistence and call summaries.
 
 > **Round 3 project:** Advanced AI Project Challenge & Technical Discussion — FORTIVEX AI PRIVATE LIMITED.
 
@@ -23,7 +23,7 @@ AAHVANI AI is an evaluation-ready MVP that demonstrates how an AI sales assistan
 
 ![AAHVANI AI current MVP system architecture](architecture/system_architecture.svg)
 
-The diagram describes the **implemented MVP**, including its optional voice adapters. The 100,000-user design is a proposed production architecture documented separately; it has not been deployed or load-tested.
+The diagram describes the **implemented MVP**, including optional Gemini Live browser audio. The 100,000-user design is a proposed production architecture documented separately; it has not been deployed or load-tested.
 
 ## Business problem and proposed solution
 
@@ -40,19 +40,21 @@ The product used for the demonstration, **Northstar CRM**, is fictional sample d
 | Customer interaction | Gradio chat interface | Implemented |
 | Contextual memory | Conversation and lead data in Gradio session state | Implemented |
 | Product knowledge | Local Markdown FAQ with custom TF-IDF-style lexical ranking | Implemented |
-| Response generation | Deterministic local response path; optional Gemini generation when configured | Implemented / optional |
+| Response generation | Deterministic local text-chat fallback; optional Gemini text generation | Implemented / optional |
+| Live voice conversation | Bidirectional WebRTC audio streaming to Gemini Live with native speech responses and interruption support | Optional; requires API key and live dependencies |
+| Voice transcript and CRM sync | Gemini Live input/output transcription; customer transcript feeds existing lead extraction and SQLite | Optional; requires live mode |
 | Lead qualification | BANT-inspired, transparent 0–100 heuristic | Implemented |
 | Sentiment | Positive/negative keyword-count baseline | Implemented |
 | Lead and appointment storage | SQLite `leads` and `appointments` tables | Implemented |
 | Demo booking | User-confirmed sample slots persisted in SQLite | Implemented |
 | Call summary | Structured summary generated from session information | Implemented |
-| Speech-to-text | Optional Faster-Whisper, local CPU INT8 inference | Optional |
-| Text-to-speech | Optional Edge TTS; requires internet | Optional |
-| Full-duplex phone calls | Telephony, streaming, interruptions and call transfer | Future work |
+| Batch voice fallback | Faster-Whisper local CPU INT8 transcription plus online Edge TTS response | Optional |
+| Live speech-to-speech | Gemini Live native audio over FastRTC/WebRTC; no separate batch STT/TTS round trip | Optional; requires API key |
+| Live phone calls | PSTN/telephony provider, phone number and call transfer | Future work |
 | Multilingual experience | Whisper is multilingual-capable, but end-to-end multilingual UX and output voices are not validated in this MVP | Partial / future work |
 | External calendar / CRM | No live third-party integration | Future work |
 
-**Accuracy about the current demo:** Gemini is not configured in the default local setup, so the demonstration uses the deterministic local fallback. Faster-Whisper runs locally when the optional voice dependencies are installed. Edge TTS is an online service. The project does not provide a live phone number, real calendar availability or production telephony.
+**Accuracy about the current demo:** Text chat continues to use the deterministic local fallback unless `GEMINI_API_KEY` is configured for optional Gemini text generation. Live Voice Mode also uses `GEMINI_API_KEY`, but connects to the configurable `GEMINI_LIVE_MODEL` (default `gemini-3.8-live`) and sends microphone audio to Google's cloud service. The FastRTC/WebRTC transport is browser-to-server; the API key remains on the Python server. The older Faster-Whisper + Edge TTS path remains available as a separate fallback. This project does not provide a live phone number, real calendar availability or PSTN telephony.
 
 ## End-to-end demonstration
 
@@ -110,6 +112,36 @@ pip install -r requirements-gemini.txt
 
 Set `GEMINI_API_KEY` in a local `.env` file. Never commit API keys or the `.env` file. Without a valid key, the deterministic local response path remains available.
 
+### Optional: real-time Live Voice Mode
+
+Live Voice Mode adds a **Speak Up** microphone control to the dashboard. It uses FastRTC/WebRTC for continuous bidirectional browser audio and Google's Gemini Live API for speech-to-speech conversation. It supports voice activity detection, natural turn-taking and interruption/barge-in. Customer speech transcription is fed into the existing lead extractor and SQLite CRM; the dashboard's lead panel and CRM metrics update from the live transcript.
+
+Install the live dependencies:
+
+```powershell
+pip install -r requirements-live.txt
+```
+
+Create a local `.env` file from the example and add your key there (never paste it into GitHub or browser JavaScript):
+
+```powershell
+copy .env.example .env
+```
+
+Then edit `.env` and set:
+
+```dotenv
+GEMINI_API_KEY=your_google_ai_studio_key
+GEMINI_LIVE_MODEL=gemini-3.8-live
+GEMINI_LIVE_VOICE=Kore
+```
+
+Restart the app with `python app.py`. In the dashboard, open **Speak Up — Live Voice Mode**, allow microphone access and press the microphone control. Use headphones to reduce acoustic echo. When finished, use the existing **Schedule a product demo** panel to select a sample slot and confirm the booking.
+
+**Privacy and cost:** Live microphone audio is sent to the Gemini Live API for processing. Usage is subject to your Google AI Studio project's quota and the current [Gemini API pricing](https://ai.google.dev/gemini-api/docs/pricing). The API key stays on the server in the local `.env` file. Do not use real customer data or recordings without consent.
+
+If no key is configured or live dependencies are not installed, the standard text workflow and batch voice fallback remain available.
+
 ### Optional: voice input and output
 
 ```bash
@@ -144,7 +176,7 @@ Production controls would include TLS, encryption at rest, tenant isolation, aut
 
 ## Known limitations and next steps
 
-- No live telephony or full-duplex voice conversation.
+- No PSTN telephony, phone number or call transfer; Live Voice Mode is browser-based WebRTC.
 - No external CRM or real calendar integration.
 - Retrieval is lexical and based on a small local FAQ, not vector embeddings.
 - Gemini is optional and not active in the default demo.
@@ -159,6 +191,7 @@ Next steps: integrate telephony and real calendar/CRM APIs, evaluate multilingua
 ```text
 AAHVANI-AI/
 ├── app.py
+├── live_voice.py
 ├── agent.py
 ├── crm.py
 ├── knowledge_base.py
@@ -174,6 +207,7 @@ AAHVANI-AI/
 ├── requirements.txt
 ├── requirements-gemini.txt
 ├── requirements-voice.txt
+├── requirements-live.txt
 └── .env.example
 ```
 
