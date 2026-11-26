@@ -478,7 +478,11 @@ footer { opacity: .48 !important; }
 @media (prefers-reduced-motion: reduce) { * { transition: none !important; scroll-behavior: auto !important; } }
 """
 
-with gr.Blocks(title=APP_NAME) as demo:
+with gr.Blocks(
+    title=APP_NAME,
+    theme=gr.themes.Soft(primary_hue="amber", secondary_hue="orange", neutral_hue="stone"),
+    css=CUSTOM_CSS,
+) as demo:
     session_state = gr.State(initial_state())
     last_response_state = gr.State("")
     gr.HTML("""
@@ -684,6 +688,4 @@ if __name__ == "__main__":
         server_name=os.getenv("HOST", "127.0.0.1"),
         server_port=int(os.getenv("PORT", "7860")),
         share=False,
-        theme=gr.themes.Soft(primary_hue="amber", secondary_hue="orange", neutral_hue="stone"),
-        css=CUSTOM_CSS,
     )
