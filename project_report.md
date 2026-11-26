@@ -16,7 +16,8 @@ Customer message or optional microphone audio → optional speech transcription 
 - **Lead qualification:** transparent BANT-inspired heuristic using Budget, Authority, Need and Timeline signals.
 - **Sentiment:** simple keyword baseline for positive, neutral or negative language.
 - **Booking and CRM:** Python functions and SQLite persist leads and sample demo appointments.
-- **Voice:** optional Faster-Whisper speech-to-text and Edge TTS speech output.
+- **Voice:** one-turn voice interaction: record audio, transcribe with Faster-Whisper, pass the transcript through the same sales-agent workflow, and generate a spoken response with Edge TTS. The Whisper model is cached after its first load.
+- **Dashboard:** live SQLite-backed counters for total leads, qualified leads and demo bookings.
 
 ## Technology stack
 Python, Gradio, Gemini API (optional), custom lexical retrieval, SQLite, Faster-Whisper (optional), Edge TTS (optional), and pytest.
