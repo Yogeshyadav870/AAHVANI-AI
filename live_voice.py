@@ -67,9 +67,47 @@ class AahvaniLiveHandler(AsyncStreamHandler):
         self._last_output_text = ""
         self._last_output_at = 0.0
         self._assistant_is_speaking = False
+        self._last_typed_text = ""
+        self._last_typed_at = 0.0
 
     def copy(self) -> "AahvaniLiveHandler":
         return AahvaniLiveHandler()
+
+    def set_args(self, args: list[Any]) -> None:
+        """Receive the integrated FastRTC textbox submission and route it to Gemini Live."""
+        super().set_args(args)
+        typed_text = ""
+        for value in args:
+            if isinstance(value, dict):
+                typed_text = str(value.get("textbox") or "").strip()
+            else:
+                typed_text = str(getattr(value, "textbox", "") or "").strip()
+            if typed_text:
+                break
+
+        if not typed_text:
+            return
+
+        now = time.monotonic()
+        if typed_text == self._last_typed_text and now - self._last_typed_at < 2.0:
+            return
+        self._last_typed_text = typed_text
+        self._last_typed_at = now
+
+        loop = getattr(self, "_loop", None)
+        if loop is None or self.session is None:
+            self.status_message = "Connect the microphone before sending a text message."
+            return
+
+        future = asyncio.run_coroutine_threadsafe(self.send_text(typed_text), loop)
+
+        def report_send_result(done_future) -> None:
+            try:
+                done_future.result()
+            except Exception:
+                logger.exception("Could not send typed text to the Gemini Live session")
+
+        future.add_done_callback(report_send_result)
 
     def _system_instruction(self) -> str:
         knowledge = self.agent.knowledge_base.documents
@@ -412,17 +450,3 @@ question. Never claim to be a human salesperson.
         await self._close_session()
         if _ACTIVE_LIVE_HANDLER is self:
             _ACTIVE_LIVE_HANDLER = None
-
-
-def send_live_text(text: str) -> tuple[bool, str]:
-    """Thread-safe bridge from a Gradio textbox to the active live session."""
-    handler = _ACTIVE_LIVE_HANDLER
-    if handler is None or handler.session is None:
-        return False, "Start the Speak Up microphone first. AAHVANI will greet you automatically."
-    try:
-        future = asyncio.run_coroutine_threadsafe(handler.send_text(text), handler.loop)
-        future.result(timeout=15)
-        return True, "Message sent to the live AAHVANI session."
-    except Exception as exc:
-        logger.exception("Could not send typed text to the live session")
-        return False, f"Could not send the message: {exc}"
