@@ -10,6 +10,8 @@ from knowledge_base import KnowledgeBase
 class AgentCoreTests(unittest.TestCase):
     def setUp(self):
         self.agent = AahvaniAgent(KnowledgeBase())
+        # Keep unit tests deterministic and independent of external API keys.
+        self.agent.client = None
         self.session = self.agent.new_session()
 
     def test_lead_scoring(self):
@@ -44,6 +46,49 @@ class AgentCoreTests(unittest.TestCase):
         results = self.agent.knowledge_base.search("What are the lead management features?", top_k=2)
         self.assertTrue(results)
         self.assertIn("Lead management", results[0]["content"])
+
+    def test_buying_intent_is_captured_instead_of_dumping_an_faq(self):
+        _, session = self.agent.respond("Hello", self.session)
+        reply, session = self.agent.respond(
+            "I have to book CRM services for my company", session
+        )
+        self.assertIn("company", session["lead"]["need"].lower())
+        self.assertEqual(session["pending_field"], "budget")
+        self.assertIn("budget", reply.lower())
+        self.assertNotIn("Product Knowledge Base", reply)
+        self.assertNotIn("Security and privacy", reply)
+
+    def test_need_to_store_company_data_is_not_misrouted_to_faq(self):
+        reply, session = self.agent.respond(
+            "I want to store data of my company", self.session
+        )
+        self.assertIn("store data", session["lead"]["need"].lower())
+        self.assertEqual(session["pending_field"], "budget")
+        self.assertIn("budget", reply.lower())
+        self.assertNotIn("Security and privacy", reply)
+
+    def test_contextual_flexible_budget_answer_advances_to_authority(self):
+        _, session = self.agent.respond("Hello", self.session)
+        _, session = self.agent.respond(
+            "I have to book CRM services for my company", session
+        )
+        _, session = self.agent.respond("Yes my bugut is flexible", session)
+        self.assertEqual(session["lead"]["budget"], "Flexible (no fixed budget)")
+        self.assertEqual(session["pending_field"], "authority")
+
+        reply, session = self.agent.respond("Yes", session)
+        self.assertEqual(session["lead"]["authority"], "Decision maker")
+        self.assertEqual(session["pending_field"], "timeline")
+        self.assertIn("when are you hoping", reply.lower())
+
+    def test_faq_is_answered_briefly_then_discovery_continues(self):
+        reply, session = self.agent.respond(
+            "What features does Northstar CRM provide?", self.session
+        )
+        self.assertNotIn("Product Knowledge Base", reply)
+        self.assertNotIn("## Product overview", reply)
+        self.assertEqual(session["pending_field"], "need")
+        self.assertIn("manage or improve", reply.lower())
 
     def test_end_to_end_lead_to_booking_workflow(self):
         with tempfile.TemporaryDirectory() as directory:
