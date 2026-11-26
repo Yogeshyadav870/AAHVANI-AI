@@ -43,6 +43,23 @@ class GeminiInteractionsTests(unittest.TestCase):
         with patch.dict(os.environ, {"GEMINI_MODEL": "gemini-3.8-flash"}):
             self.assertEqual(app._gemini_text_model_name(), "gemini-3.8-flash")
 
+    def test_text_client_disables_long_sdk_retries_to_surface_api_status(self):
+        previous_client = app._GEMINI_TEXT_CLIENT
+        app._GEMINI_TEXT_CLIENT = None
+        try:
+            with patch.dict(os.environ, {"GEMINI_API_KEY": "test-key"}):
+                with patch("app.genai.Client") as client_factory:
+                    fake_client = object()
+                    client_factory.return_value = fake_client
+                    returned = app._get_gemini_text_client()
+
+            self.assertIs(returned, fake_client)
+            options = client_factory.call_args.kwargs["http_options"]
+            self.assertEqual(options.timeout, 45000)
+            self.assertEqual(options.retry_options.attempts, 0)
+        finally:
+            app._GEMINI_TEXT_CLIENT = previous_client
+
     def test_interactions_api_executes_catalogue_tool_and_continues_stateful_turn(self):
         tool_call = SimpleNamespace(
             type="function_call",
