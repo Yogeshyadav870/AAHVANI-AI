@@ -362,11 +362,11 @@ addresses or other payment credentials. Do not provide payment or delivery guara
                 order = self.crm.get_demo_order(order_reference)
                 if order:
                     self.order_success_markdown = (
-                        "## Order status lookup\\n\\n"
-                        f"**Order ID:** {order['order_ref']}\\n\\n"
-                        f"**Product:** {order['product_title']}\\n\\n"
-                        f"**Total:** ₹{int(order['total_price']):,}\\n\\n"
-                        f"**Current status:** {order['status']}\\n\\n"
+                        "## Order status lookup\n\n"
+                        f"**Order ID:** {order['order_ref']}\n\n"
+                        f"**Product:** {order['product_title']}\n\n"
+                        f"**Total:** ₹{int(order['total_price']):,}\n\n"
+                        f"**Current status:** {order['status']}\n\n"
                         "Simulated order only — no real shipment exists."
                     )
                     await self._publish_ui()
