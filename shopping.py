@@ -44,6 +44,13 @@ class ShoppingCatalogue:
         "fitness": ("fitness", "health", "workout", "running", "steps"),
         "content": ("editing", "video editing", "design", "creative", "content creation"),
         "movies": ("movies", "streaming", "watch videos", "entertainment"),
+        "travel": ("travel", "portraits", "portrait photography", "landscape"),
+        "creative": ("drawing", "art", "creative work", "illustration", "design"),
+        "capacity": ("capacity", "family size", "large family", "load capacity"),
+        "efficiency": ("energy efficient", "energy efficiency", "low power", "save electricity"),
+        "compact": ("compact", "small kitchen", "space saving", "small space"),
+        "party": ("party", "parties", "gathering", "loud music"),
+        "smart features": ("smart features", "smart functions", "connected features"),
         "everyday": ("daily", "everyday", "general use", "all round", "all-round", "normal use"),
     }
 
