@@ -81,6 +81,36 @@ class AgentCoreTests(unittest.TestCase):
         self.assertEqual(session["pending_field"], "timeline")
         self.assertIn("when are you hoping", reply.lower())
 
+    def test_text_chat_routes_dental_appointment_away_from_crm_sales(self):
+        reply, session = self.agent.respond(
+            "I need a dental appointment tomorrow at 11 AM", self.session
+        )
+        request = session["appointment_request"]
+        self.assertEqual(session["active_flow"], "appointment")
+        self.assertEqual(request["service_category"], "Healthcare")
+        self.assertEqual(request["service_name"], "Dental consultation")
+        self.assertEqual(request["preferred_time"], "11:00 AM")
+        self.assertEqual(request["city"], "Jalandhar")
+        self.assertIn("name", reply.lower())
+        self.assertNotIn("budget", reply.lower())
+
+    def test_text_appointment_requires_readback_confirmation_before_saving(self):
+        _, session = self.agent.respond(
+            "I need a dental appointment tomorrow at 11 AM", self.session
+        )
+        reply, session = self.agent.respond(
+            "My name is Yogesh and my phone is +91 9876543210", session
+        )
+        self.assertIn("should i submit", reply.lower())
+        self.assertNotIn("appointment_to_save", session)
+
+        reply, session = self.agent.respond("yes", session)
+        self.assertIn("submitting", reply.lower())
+        self.assertEqual(session["appointment_to_save"]["customer_name"], "Yogesh")
+        self.assertEqual(
+            session["appointment_to_save"]["customer_phone"], "+91 9876543210"
+        )
+
     def test_faq_is_answered_briefly_then_discovery_continues(self):
         reply, session = self.agent.respond(
             "What features does Northstar CRM provide?", self.session
