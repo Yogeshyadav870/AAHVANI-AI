@@ -24,6 +24,11 @@ class ShoppingCatalogue:
         "home appliance": ("washing machine", "refrigerator", "fridge", "microwave", "vacuum cleaner", "air purifier"),
         "speaker": ("speaker", "bluetooth speaker", "soundbar"),
         "gaming console": ("gaming console", "playstation", "xbox", "console"),
+        "television": ("television", "smart tv", "led tv", "tv"),
+        "printer": ("printer", "printing", "ink tank printer", "laser printer"),
+        "footwear": ("footwear", "running shoes", "sports shoes", "sneakers", "shoes", "sandals"),
+        "backpack": ("backpack", "laptop bag", "travel bag", "school bag", "rucksack", "bag"),
+        "furniture": ("office chair", "study table", "desk", "chair", "table", "sofa", "furniture"),
     }
     BRANDS = (
         "Samsung", "Apple", "Xiaomi", "Redmi", "OnePlus", "Motorola", "Nothing",
@@ -52,6 +57,10 @@ class ShoppingCatalogue:
         "compact": ("compact", "small kitchen", "space saving", "small space"),
         "party": ("party", "parties", "gathering", "loud music"),
         "smart features": ("smart features", "smart functions", "connected features"),
+        "travel": ("travel", "commute", "travelling", "tour"),
+        "casual": ("casual", "daily wear", "everyday wear"),
+        "sports": ("sports", "running", "walking", "training", "gym"),
+        "comfort": ("comfort", "ergonomic", "back support", "posture"),
         "everyday": ("daily", "everyday", "general use", "all round", "all-round", "normal use"),
     }
 
@@ -340,6 +349,11 @@ class ShoppingAgent:
                 "home appliance": "What matters most — capacity, energy efficiency, compact size or smart features?",
                 "speaker": "Will you mainly use it for music, parties, movies or a desktop setup?",
                 "gaming console": "Which matters more — exclusive games, online multiplayer or family gaming?",
+                "television": "Will you mainly use it for movies and streaming, gaming or everyday TV viewing? What screen size do you prefer?",
+                "printer": "Will you mainly print documents for study/work, photos or occasional home use?",
+                "footwear": "Are you looking for running/sports shoes, walking shoes or casual everyday footwear?",
+                "backpack": "Will you use it for college, office, travel or carrying a laptop?",
+                "furniture": "Are you looking for a chair, desk, study table or another furniture item? Is comfort or storage your priority?",
             }
             reply = questions.get(shopping["category"], "What is the main use you have in mind?")
         elif not shopping.get("brand"):
