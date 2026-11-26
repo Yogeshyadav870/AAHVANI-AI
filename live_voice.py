@@ -496,7 +496,7 @@ question. Never claim to be a human salesperson.
         if (
             not lead.get("budget")
             and "budget" in previous_question
-            and re.search(r"\bflexib\\w*\b|\bno fixed\b", answer)
+            and re.search(r"\bflexib\w*\b|\bno fixed\b", answer)
         ):
             lead["budget"] = "Flexible (no fixed budget)"
 
