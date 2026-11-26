@@ -68,7 +68,7 @@ class AahvaniAgent:
         role_words = {
             "ceo", "chief", "executive", "officer", "founder", "cofounder",
             "owner", "proprietor", "manager", "director", "president",
-            "approver", "employee", "employee", "developer", "engineer",
+            "approver", "employee", "developer", "engineer",
         }
         # "I'm the CEO" and "I am founder" describe a role, not a person's name.
         if words[0].lower() in {"the", "a", "an"} | role_words:
