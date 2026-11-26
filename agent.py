@@ -469,18 +469,21 @@ Answer the product question in 1-3 concise sentences. Do not ask a follow-up que
             request["customer_phone"] = phone
 
     def _respond_to_appointment(self, text: str, session: dict[str, Any]) -> tuple[str, dict[str, Any]]:
-        request = session.setdefault("appointment_request", {
-            "service_category": "",
-            "service_name": "",
-            "provider_name": "Provider to be selected",
-            "city": "Jalandhar",
-            "preferred_date": "",
-            "preferred_time": "",
-            "customer_name": "",
-            "customer_phone": "",
-            "customer_email": "",
-            "notes": "",
-        })
+        request = session.get("appointment_request")
+        if not isinstance(request, dict):
+            request = {
+                "service_category": "",
+                "service_name": "",
+                "provider_name": "Provider to be selected",
+                "city": "Jalandhar",
+                "preferred_date": "",
+                "preferred_time": "",
+                "customer_name": "",
+                "customer_phone": "",
+                "customer_email": "",
+                "notes": "",
+            }
+            session["appointment_request"] = request
 
         if session.get("appointment_confirmation_pending"):
             if self._is_simple_yes(text):
@@ -585,6 +588,19 @@ Answer the product question in 1-3 concise sentences. Do not ask a follow-up que
         if pending_field == "email" and not lead.get("email"):
             if re.search(r"\b(skip|prefer not|not now)\b", lower):
                 session["contact_skipped"] = True
+
+        # Advance to the next missing field after contextual short answers.
+        field_completed = (
+            (pending_field == "budget" and bool(lead.get("budget")))
+            or (pending_field == "authority" and bool(lead.get("authority")))
+            or (pending_field == "timeline" and bool(lead.get("timeline")))
+            or (pending_field == "email" and bool(lead.get("email") or lead.get("phone") or session.get("contact_skipped")))
+        )
+        if field_completed:
+            reply = self._next_discovery_question(lead, session)
+            lead["lead_score"], lead["qualification"] = self._score(lead)
+            messages.append({"role": "assistant", "content": reply})
+            return reply, session
 
         greeting_only = len(text.split()) <= 3 and any(
             word in lower for word in ("hi", "hello", "hey", "namaste")
