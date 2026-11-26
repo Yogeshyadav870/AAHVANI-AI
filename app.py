@@ -81,6 +81,11 @@ def gemini_shopping_reply(message, session):
     session.setdefault("gemini_history", [])
     session["_text_tool_events"] = []
     session["_last_text_message"] = str(message or "").strip()
+    if (
+        session.get("text_confirmation_ready")
+        and not ShoppingAgent.YES.fullmatch(session["_last_text_message"].lower())
+    ):
+        session["text_confirmation_ready"] = False
 
     # Extract clear facts from each turn before asking Gemini to continue the
     # conversation. This preserves budget/category/brand when details arrive separately.
@@ -233,6 +238,9 @@ status and be transparent that it is a simulated order.
         shopping_state["selected_product"] = product
         shopping_state["awaiting_selection"] = False
         shopping_state["awaiting_confirmation"] = True
+        shopping_state["order_idempotency_key"] = (
+            session.setdefault("session_id", str(uuid.uuid4())) + ":" + str(uuid.uuid4())
+        )
         session["text_confirmation_ready"] = False
         session["_text_tool_events"].append("select_product")
         return {
@@ -266,10 +274,12 @@ status and be transparent that it is a simulated order.
                 product=selected,
                 quantity=max(1, min(10, int(quantity or 1))),
                 customer_name="",
-                idempotency_key=session.setdefault("session_id", str(uuid.uuid4())) + ":" + selected["id"],
+                idempotency_key=shopping_state.get("order_idempotency_key") or (
+                    session.setdefault("session_id", str(uuid.uuid4())) + ":" + str(uuid.uuid4())
+                ),
             )
         except Exception as exc:
-            logger.exception("Text Chat could not create simulated order")
+            logging.getLogger(__name__).exception("Text Chat could not create simulated order")
             return {"ok": False, "error": f"Could not create simulated order: {type(exc).__name__}: {exc}"}
         shopping_state["order"] = record
         shopping_state["awaiting_confirmation"] = False
