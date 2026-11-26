@@ -320,6 +320,16 @@ class ShoppingAgentTests(unittest.TestCase):
         self.assertEqual(self.catalogue.detect_category("Need wireless headphones"), "headphones")
         self.assertEqual(self.catalogue.detect_category("Looking for a smartwatch"), "smartwatch")
 
+    def test_product_name_does_not_trigger_creative_use_case(self):
+        self.assertEqual(self.catalogue.detect_use_case("I need a smartphone under 15000"), "")
+        self.assertEqual(self.catalogue.detect_use_case("I need a smartphone for camera"), "camera")
+
+    def test_hinglish_laptop_request_extracts_category_budget_and_use_case(self):
+        text = "Mujhe 15k ke andar gaming laptop chahiye"
+        self.assertEqual(self.catalogue.detect_category(text), "laptop")
+        self.assertEqual(self.catalogue.parse_budget(text), 15000)
+        self.assertEqual(self.catalogue.detect_use_case(text), "gaming")
+
     def test_parses_indian_budget_formats(self):
         self.assertEqual(self.catalogue.parse_budget("phone under ₹15,000"), 15000)
         self.assertEqual(self.catalogue.parse_budget("15k ke andar"), 15000)
