@@ -58,6 +58,27 @@ class CRM:
                 updated_at TEXT DEFAULT CURRENT_TIMESTAMP,
                 FOREIGN KEY(lead_id) REFERENCES leads(id)
             )""")
+            conn.execute("""CREATE TABLE IF NOT EXISTS demo_orders (
+                id TEXT PRIMARY KEY,
+                order_ref TEXT NOT NULL UNIQUE,
+                idempotency_key TEXT NOT NULL DEFAULT '',
+                product_id TEXT NOT NULL,
+                product_title TEXT NOT NULL,
+                category TEXT NOT NULL,
+                brand TEXT NOT NULL,
+                unit_price INTEGER NOT NULL,
+                quantity INTEGER NOT NULL DEFAULT 1,
+                total_price INTEGER NOT NULL,
+                status TEXT NOT NULL DEFAULT 'Pending',
+                customer_name TEXT NOT NULL DEFAULT '',
+                created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+                updated_at TEXT DEFAULT CURRENT_TIMESTAMP
+            )""")
+            conn.execute(
+                "CREATE INDEX IF NOT EXISTS idx_demo_orders_created_at ON demo_orders(created_at)"
+            )
+
+
 
     def save_lead(self, lead: dict[str, Any], lead_id: str | None = None) -> str:
         lead_id = lead_id or str(uuid.uuid4())
@@ -226,6 +247,99 @@ class CRM:
             )
             if cursor.rowcount == 0:
                 raise ValueError("Appointment request was not found.")
+
+
+    def create_demo_order(
+        self,
+        *,
+        product: dict[str, Any],
+        quantity: int = 1,
+        customer_name: str = "",
+        idempotency_key: str = "",
+    ) -> dict[str, Any]:
+        """Create a simulated order. This never charges a payment method or contacts a retailer."""
+        required = ("id", "title", "category", "brand", "price_inr")
+        missing = [key for key in required if not str(product.get(key, "")).strip()]
+        if missing:
+            raise ValueError("Product is missing required details: " + ", ".join(missing))
+        quantity = int(quantity)
+        if quantity < 1 or quantity > 10:
+            raise ValueError("Demo order quantity must be between 1 and 10.")
+        unit_price = int(product["price_inr"])
+        if unit_price <= 0:
+            raise ValueError("Product price must be a positive demo price.")
+
+        with self._connect() as conn:
+            if idempotency_key:
+                existing = conn.execute(
+                    "SELECT * FROM demo_orders WHERE idempotency_key = ?",
+                    (idempotency_key,),
+                ).fetchone()
+                if existing:
+                    return dict(existing)
+
+            order_id = str(uuid.uuid4())
+            order_ref = "AAH-" + order_id.replace("-", "")[:8].upper()
+            conn.execute(
+                """INSERT INTO demo_orders (
+                    id, order_ref, idempotency_key, product_id, product_title,
+                    category, brand, unit_price, quantity, total_price,
+                    status, customer_name
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'Pending', ?)""",
+                (
+                    order_id, order_ref, idempotency_key, str(product["id"]),
+                    str(product["title"]), str(product["category"]), str(product["brand"]),
+                    unit_price, quantity, unit_price * quantity, customer_name.strip(),
+                ),
+            )
+            row = conn.execute(
+                "SELECT * FROM demo_orders WHERE id = ?", (order_id,)
+            ).fetchone()
+        return dict(row)
+
+    def recent_demo_orders(self, limit: int = 50) -> list[list[Any]]:
+        with self._connect() as conn:
+            rows = conn.execute(
+                """SELECT order_ref, product_title, brand, category, quantity,
+                          unit_price, total_price, status, customer_name, created_at, id
+                   FROM demo_orders ORDER BY created_at DESC LIMIT ?""",
+                (limit,),
+            ).fetchall()
+        return [list(row) for row in rows]
+
+    def demo_order_count(self) -> int:
+        with self._connect() as conn:
+            row = conn.execute(
+                "SELECT COUNT(*) AS total FROM demo_orders"
+            ).fetchone()
+        return int(row["total"])
+
+    def get_demo_order(self, order_id_or_ref: str) -> dict[str, Any] | None:
+        value = str(order_id_or_ref or "").strip()
+        if not value:
+            return None
+        with self._connect() as conn:
+            row = conn.execute(
+                "SELECT * FROM demo_orders WHERE id = ? OR order_ref = ?",
+                (value, value.upper()),
+            ).fetchone()
+        return dict(row) if row else None
+
+    def update_demo_order_status(self, order_id_or_ref: str, status: str) -> None:
+        allowed = {"Pending", "Processing", "Shipped", "Delivered", "Cancelled"}
+        if status not in allowed:
+            raise ValueError(f"Unsupported demo order status: {status}")
+        value = str(order_id_or_ref or "").strip()
+        if not value:
+            raise ValueError("Enter an order ID or order reference.")
+        with self._connect() as conn:
+            cursor = conn.execute(
+                """UPDATE demo_orders SET status = ?, updated_at = CURRENT_TIMESTAMP
+                   WHERE id = ? OR order_ref = ?""",
+                (status, value, value.upper()),
+            )
+            if cursor.rowcount == 0:
+                raise ValueError("Demo order was not found.")
 
     def recent_leads(self, limit: int = 20) -> list[list[Any]]:
         with self._connect() as conn:
